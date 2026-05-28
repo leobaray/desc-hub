@@ -4,103 +4,74 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0a0d12">
-  <title>LBWMA · Importação</title>
+  <title>LBWMA · Cadastro & Importação</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%230a0d12'/><rect x='9' y='9' width='14' height='14' rx='4' fill='%2343d693'/></svg>">
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
   <header class="topbar">
-    <div class="brand"><span class="logo" aria-hidden="true"></span>LBWMA<span class="brand-sub">Importação · DUIMP</span></div>
+    <div class="brand"><span class="logo" aria-hidden="true"></span>LBWMA<span class="brand-sub">Cadastro · DUIMP</span></div>
     <div class="actions">
       <span class="badge idle" id="status">pronto</span>
-      <label class="toggle" title="Redige a descrição com IA na 1ª vez; depois vem do cache">
+      <label class="toggle" title="Redige a descrição com IA ao buscar/processar; depois fica salva">
         <input type="checkbox" id="ia">
         <span class="toggle-track" aria-hidden="true"><span class="toggle-knob"></span></span>
         <span class="toggle-label">IA</span>
       </label>
-      <button class="btn-ghost" id="novo" hidden>Novo</button>
-      <button class="btn-primary" id="exportar" hidden>Exportar planilha</button>
+      <button class="btn-ghost" id="abrir-planilhas">Planilhas</button>
+      <button class="btn-primary" id="exportar" disabled>Exportar (0)</button>
     </div>
   </header>
 
   <main class="content">
-    <!-- Upload / empty state -->
-    <section class="uploader" id="uploader">
-      <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Selecionar invoice PDF">
-        <input type="file" id="file" accept="application/pdf,.pdf" hidden>
-        <svg class="dz-icon" viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M14 3v4a1 1 0 0 0 1 1h4"/>
-          <path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z"/>
-          <path d="M12 17v-6M9.5 13.5 12 11l2.5 2.5"/>
-        </svg>
-        <strong>Arraste o invoice (PDF) aqui</strong>
-        <span>ou clique para selecionar</span>
-        <div class="dz-file" id="file-name" hidden></div>
-      </div>
-      <button class="btn-primary lg" id="processar" disabled>Processar invoice</button>
+    <div class="metrics-row">
+      <div class="metric-card"><div class="metric-label">Produtos no cadastro</div><div class="metric-value" id="c-total">0</div></div>
+      <div class="metric-card"><div class="metric-label">Completos</div><div class="metric-value green" id="c-ok">0</div></div>
+      <div class="metric-card"><div class="metric-label">Incompletos</div><div class="metric-value yellow" id="c-inc">0</div></div>
+      <div class="metric-card"><div class="metric-label">Cadastro completo</div><div class="metric-value accent" id="c-prog">0%</div><div class="metric-bar"><span id="c-prog-fill"></span></div></div>
+    </div>
 
-      <div class="base-cta">
-        <span class="base-cta-sep">ou use a base já salva</span>
-        <div class="base-cta-actions">
-          <button class="btn-ghost" id="abrir-base">Abrir base salva</button>
-          <button class="btn-ghost" id="baixar-base">Baixar base (.xlsx)</button>
-        </div>
+    <div class="toolbar">
+      <div class="search-wrap">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input class="search" id="busca" placeholder="filtrar por código, descrição, aplicação…" autocomplete="off">
       </div>
-    </section>
+      <label class="check"><input type="checkbox" id="filtro-inc"> só incompletos</label>
+      <span class="sel-info" id="sel-info" hidden></span>
+      <span class="toolbar-spacer"></span>
+      <form class="add-form" id="add-form" hidden>
+        <input id="add-input" placeholder="código (ex.: 512568, RGPZ-278)…" autocomplete="off" spellcheck="false">
+        <button class="btn-primary sm" id="add-go" type="submit">buscar</button>
+      </form>
+      <button class="btn-ghost sm" id="add-toggle">+ código</button>
+      <button class="btn-ghost sm" id="btn-importar">Importar planilha</button>
+      <button class="btn-ghost sm" id="btn-invoice">Processar invoice</button>
+      <input type="file" id="file-importar" accept=".xlsx" hidden>
+    </div>
 
-    <!-- Progresso -->
-    <section class="progress" id="progresso" hidden>
-      <div class="bar"><div class="bar-fill" id="barra"></div></div>
-      <span class="prog-txt" id="prog-txt"></span>
-    </section>
-
-    <!-- Resultados -->
-    <section id="resultados" hidden>
-      <div class="metrics-row">
-        <div class="metric-card"><div class="metric-label">Total de itens</div><div class="metric-value" id="c-total">0</div></div>
-        <div class="metric-card"><div class="metric-label">Confirmados</div><div class="metric-value green" id="c-ok">0</div></div>
-        <div class="metric-card"><div class="metric-label">A revisar</div><div class="metric-value yellow" id="c-rev">0</div></div>
-        <div class="metric-card"><div class="metric-label">Progresso da revisão</div><div class="metric-value accent" id="c-prog">0%</div><div class="metric-bar"><span id="c-prog-fill"></span></div></div>
-      </div>
-
-      <div class="toolbar">
-        <div class="search-wrap">
-          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-          <input class="search" id="busca" placeholder="filtrar por código ou texto…" autocomplete="off">
-        </div>
-        <label class="check"><input type="checkbox" id="filtro-rev"> só a revisar</label>
-        <span class="toolbar-spacer"></span>
-        <form class="add-form" id="add-form" hidden>
-          <input id="add-input" placeholder="código (ex.: 512568, RGPZ-278)…" autocomplete="off" spellcheck="false">
-          <button class="btn-primary sm" id="add-go" type="submit">adicionar</button>
-        </form>
-        <button class="btn-ghost sm" id="add-toggle">+ código</button>
-      </div>
-
-      <div class="table-wrap">
-        <table class="table">
-          <thead>
-            <tr>
-              <th class="col-cod">Código</th>
-              <th class="num col-qtd">Qtd</th>
-              <th class="col-ori">Origem</th>
-              <th class="col-ncm">NCM</th>
-              <th>Descrição</th>
-              <th class="col-fonte">Fonte</th>
-              <th class="col-status">Status</th>
-            </tr>
-          </thead>
-          <tbody id="tbody"></tbody>
-        </table>
-        <p class="vazio-filtro" id="vazio-filtro" hidden>Nenhum item bate com o filtro.</p>
-      </div>
-    </section>
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr>
+            <th class="col-check"><input type="checkbox" id="check-all" title="selecionar tudo (filtrado)"></th>
+            <th class="col-cod">Código</th>
+            <th class="col-fab">Fabricante</th>
+            <th class="col-ncm">NCM</th>
+            <th>Descrição (Siscomex)</th>
+            <th class="col-fonte">Fonte</th>
+            <th class="col-status">Status</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      <p class="vazio-filtro" id="vazio-filtro" hidden></p>
+    </div>
   </main>
 
-  <!-- Modal de revisão / edição -->
+  <!-- ===================== Modal: ficha do produto ===================== -->
   <div class="modal" id="modal" hidden>
     <div class="modal-backdrop" id="modal-bg"></div>
-    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="m-cod">
+    <div class="modal-card modal-lg" role="dialog" aria-modal="true" aria-labelledby="m-cod">
       <div class="modal-head">
         <div class="modal-head-l">
           <span class="m-cod" id="m-cod"></span>
@@ -114,21 +85,110 @@
         </div>
       </div>
       <div class="modal-body">
-        <div class="m-meta" id="m-meta"></div>
-        <div class="m-motivos" id="m-motivos" hidden></div>
-        <div class="m-field">
-          <label class="m-label" for="m-desc">Descrição (Catálogo Siscomex)</label>
-          <textarea class="m-textarea" id="m-desc" spellcheck="false"></textarea>
+        <div class="ficha-top">
+          <div class="ficha-img" id="ficha-img">
+            <div class="ficha-img-box" id="ficha-img-box"><span class="ficha-img-vazia">sem imagem</span></div>
+            <div class="ficha-img-actions">
+              <button class="btn-ghost sm" id="img-upload-btn">enviar imagem</button>
+              <button class="btn-ghost sm" id="img-remove-btn" hidden>remover</button>
+              <input type="file" id="img-file" accept="image/jpeg,image/jpg,.jpg,.jpeg" hidden>
+            </div>
+          </div>
+          <div class="ficha-falta-wrap">
+            <div class="m-motivos" id="m-motivos" hidden></div>
+            <div class="ficha-falta" id="ficha-falta" hidden></div>
+          </div>
         </div>
+        <div class="ficha-form" id="ficha-form"></div>
       </div>
       <div class="modal-foot">
-        <label class="check"><input type="checkbox" id="m-revisado"> marcar como revisado</label>
+        <span class="m-hint" id="m-fonte"></span>
         <span class="toolbar-spacer"></span>
-        <span class="m-hint">Ctrl+Enter salva e vai pro próximo · Esc fecha</span>
-        <button class="btn-primary" id="m-salvar">Salvar</button>
+        <span class="m-hint">Ctrl+Enter salva · Esc fecha</span>
+        <button class="btn-primary" id="m-salvar">Salvar ficha</button>
       </div>
     </div>
   </div>
+
+  <!-- ===================== Modal: exportar ===================== -->
+  <div class="modal" id="modal-export" hidden>
+    <div class="modal-backdrop" data-close-export></div>
+    <div class="modal-card modal-sm" role="dialog" aria-modal="true">
+      <div class="modal-head">
+        <div class="modal-head-l"><span class="m-cod" style="font-size:15px">Exportar planilha</span></div>
+        <div class="modal-head-actions"><button class="icon-btn" data-close-export title="Fechar">✕</button></div>
+      </div>
+      <div class="modal-body">
+        <p class="exp-count" id="exp-count"></p>
+        <div class="m-field">
+          <label class="m-label" for="exp-nome">Nome da planilha</label>
+          <input class="inp" id="exp-nome" placeholder="ex.: Embarque maio, Base completa…" autocomplete="off">
+        </div>
+        <div class="m-field" style="margin-top:14px">
+          <label class="m-label">Tipo</label>
+          <div class="radio-row">
+            <label class="radio"><input type="radio" name="exp-tipo" value="duimp" checked> <span><b>DUIMP</b> — só as colunas do Siscomex (como hoje)</span></label>
+            <label class="radio"><input type="radio" name="exp-tipo" value="completa"> <span><b>Completa</b> — todos os campos + pasta de imagens</span></label>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <span class="m-hint" id="exp-msg"></span>
+        <span class="toolbar-spacer"></span>
+        <button class="btn-ghost" data-close-export>Cancelar</button>
+        <button class="btn-primary" id="exp-go">Gerar e salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== Modal: planilhas salvas ===================== -->
+  <div class="modal" id="modal-planilhas" hidden>
+    <div class="modal-backdrop" data-close-planilhas></div>
+    <div class="modal-card modal-sm" role="dialog" aria-modal="true">
+      <div class="modal-head">
+        <div class="modal-head-l"><span class="m-cod" style="font-size:15px">Planilhas salvas</span></div>
+        <div class="modal-head-actions"><button class="icon-btn" data-close-planilhas title="Fechar">✕</button></div>
+      </div>
+      <div class="modal-body">
+        <ul class="plan-list" id="plan-list"></ul>
+        <p class="vazio-filtro" id="plan-vazio" hidden>Nenhuma planilha salva ainda.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== Modal: processar invoice ===================== -->
+  <div class="modal" id="modal-invoice" hidden>
+    <div class="modal-backdrop" data-close-invoice></div>
+    <div class="modal-card modal-sm" role="dialog" aria-modal="true">
+      <div class="modal-head">
+        <div class="modal-head-l"><span class="m-cod" style="font-size:15px">Processar invoice</span></div>
+        <div class="modal-head-actions"><button class="icon-btn" data-close-invoice title="Fechar">✕</button></div>
+      </div>
+      <div class="modal-body">
+        <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Selecionar invoice PDF">
+          <input type="file" id="file" accept="application/pdf,.pdf" hidden>
+          <svg class="dz-icon" viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z"/><path d="M12 17v-6M9.5 13.5 12 11l2.5 2.5"/>
+          </svg>
+          <strong>Arraste o invoice (PDF) aqui</strong>
+          <span>ou clique para selecionar</span>
+          <div class="dz-file" id="file-name" hidden></div>
+        </div>
+        <p class="m-hint" style="margin-top:12px">Os itens entram no cadastro e ficam selecionados pra você exportar. Ative <b>IA</b> no topo pra redigir a descrição na 1ª vez.</p>
+        <div class="progress" id="inv-prog" hidden style="margin:16px 0 0">
+          <div class="bar"><div class="bar-fill" id="inv-barra"></div></div>
+          <span class="prog-txt" id="inv-prog-txt"></span>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <span class="toolbar-spacer"></span>
+        <button class="btn-ghost" data-close-invoice>Fechar</button>
+        <button class="btn-primary" id="inv-processar" disabled>Processar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" hidden></div>
 
   <script src="/static/app.js"></script>
 </body>

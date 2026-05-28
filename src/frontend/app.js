@@ -1,71 +1,494 @@
 "use strict";
 
+/* ===================== infra ===================== */
 const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
-const fileInput = $("#file"), dropzone = $("#dropzone"), fileName = $("#file-name");
-const btnProcessar = $("#processar"), chkIa = $("#ia"), status = $("#status");
-const uploader = $("#uploader"), secProg = $("#progresso"), barra = $("#barra"), progTxt = $("#prog-txt");
-const secResult = $("#resultados"), tbody = $("#tbody"), vazioFiltro = $("#vazio-filtro");
-const cTotal = $("#c-total"), cOk = $("#c-ok"), cRev = $("#c-rev"), cProg = $("#c-prog"), cProgFill = $("#c-prog-fill");
-const busca = $("#busca"), filtroRev = $("#filtro-rev");
-const btnExport = $("#exportar"), btnNovo = $("#novo");
-// base salva + adicionar código
-const abrirBaseBtn = $("#abrir-base"), baixarBaseBtn = $("#baixar-base");
-const addToggle = $("#add-toggle"), addForm = $("#add-form"), addInput = $("#add-input"), addGo = $("#add-go");
-// modal
-const modal = $("#modal"), modalBg = $("#modal-bg");
-const mCod = $("#m-cod"), mStatus = $("#m-status"), mPos = $("#m-pos"), mMeta = $("#m-meta");
-const mMotivos = $("#m-motivos"), mDesc = $("#m-desc"), mRevisado = $("#m-revisado");
-const mPrev = $("#m-prev"), mNext = $("#m-next"), mClose = $("#m-close"), mSalvar = $("#m-salvar");
-
-let linhas = [];
-let total = 0;
-let modalIdx = -1;
-
-/* ---------------- seleção de arquivo ---------------- */
-dropzone.addEventListener("click", () => fileInput.click());
-dropzone.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInput.click(); } });
-["dragover", "dragenter"].forEach((ev) => dropzone.addEventListener(ev, (e) => { e.preventDefault(); dropzone.classList.add("drag"); }));
-["dragleave", "drop"].forEach((ev) => dropzone.addEventListener(ev, (e) => { e.preventDefault(); dropzone.classList.remove("drag"); }));
-dropzone.addEventListener("drop", (e) => { if (e.dataTransfer.files.length) { fileInput.files = e.dataTransfer.files; mostrarArquivo(); } });
-fileInput.addEventListener("change", mostrarArquivo);
-function mostrarArquivo() {
-  const f = fileInput.files[0];
-  if (!f) return;
-  fileName.textContent = f.name; fileName.hidden = false; btnProcessar.disabled = false;
+async function jget(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  return r.json();
+}
+async function jsend(url, method, body) {
+  const r = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  if (!r.ok) {
+    let m = "HTTP " + r.status;
+    try { const e = await r.json(); if (e.erro) m = e.erro; } catch (_) {}
+    throw new Error(m);
+  }
+  return r.json();
 }
 
-/* ---------------- processar (stream NDJSON) ---------------- */
-btnProcessar.addEventListener("click", processar);
-btnNovo.addEventListener("click", reset);
-abrirBaseBtn.addEventListener("click", abrirBase);
-baixarBaseBtn.addEventListener("click", baixarBase);
-addToggle.addEventListener("click", toggleAddForm);
-addForm.addEventListener("submit", (e) => { e.preventDefault(); adicionarCodigo(); });
+let toastT = null;
+function toast(msg, cls = "ok") {
+  const t = $("#toast");
+  t.textContent = msg; t.className = "toast " + cls; t.hidden = false;
+  clearTimeout(toastT);
+  toastT = setTimeout(() => { t.hidden = true; }, 3200);
+}
+function setStatus(cls, txt) { const s = $("#status"); s.className = "badge " + cls; s.textContent = txt; }
 
-function reset() {
-  linhas = []; total = 0; tbody.innerHTML = "";
-  secResult.hidden = true; secProg.hidden = true; uploader.hidden = false;
-  btnExport.hidden = true; btnNovo.hidden = true;
-  addForm.hidden = true; addToggle.textContent = "+ código"; addInput.value = "";
-  fileInput.value = ""; fileName.hidden = true; btnProcessar.disabled = true;
-  setStatus("idle", "pronto");
+/* ===================== campos da ficha ===================== */
+// [grupo, chave, rótulo, tipo, opções]
+const CAMPOS = [
+  ["DUIMP", "cod_ss", "Cód. interno (SS)", "text"],
+  ["DUIMP", "cod_sisc", "Cód. Siscomex", "text"],
+  ["DUIMP", "fabricante", "Fabricante", "text"],
+  ["DUIMP", "ncm", "NCM", "text"],
+  ["DUIMP", "peso", "Peso", "text"],
+  ["DUIMP", "medida", "Medida", "text"],
+  ["DUIMP", "cclasstrib", "cClassTrib", "text"],
+  ["DUIMP", "pais_origem", "País de origem", "text"],
+  ["DUIMP", "nve_materia_prima", "NVE matéria-prima", "text"],
+  ["DUIMP", "nve_processo", "NVE processo", "text"],
+  ["DUIMP", "nve_acabamento", "NVE acabamento", "text"],
+  ["DUIMP", "desc_sisc", "Descrição Siscomex (DUIMP)", "textarea"],
+  ["Comercial / logística", "descricao", "Descrição (comercial)", "textarea"],
+  ["Comercial / logística", "un_medida_entrada", "Un. medida entrada", "text"],
+  ["Comercial / logística", "qtd_embalagem_entrada", "Qtd. embalagem entrada", "text"],
+  ["Comercial / logística", "un_medida_saida", "Un. medida saída", "text"],
+  ["Comercial / logística", "qtd_embalagem_saida", "Qtd. embalagem saída", "text"],
+  ["Comercial / logística", "localizacao_estoque", "Localização no estoque", "text"],
+  ["Comercial / logística", "revenda_uso_interno", "Revenda / Uso interno", "select", ["", "Revenda", "Uso interno"]],
+  ["Técnico", "aplicacoes", "Aplicações / dados técnicos", "textarea"],
+  ["Técnico", "veiculos", "Veículos", "text"],
+  ["Técnico", "caracteristicas", "Características (opcional)", "textarea"],
+];
+const ROTULOS = Object.fromEntries(CAMPOS.map((c) => [c[1], c[2]]));
+ROTULOS.imagem = "Imagem";
+const OBRIGATORIOS = new Set([
+  "fabricante", "cod_ss", "cod_sisc", "peso", "medida", "ncm", "desc_sisc",
+  "nve_materia_prima", "nve_processo", "nve_acabamento", "pais_origem",
+  "descricao", "un_medida_entrada", "qtd_embalagem_entrada", "un_medida_saida",
+  "qtd_embalagem_saida", "localizacao_estoque", "aplicacoes", "veiculos",
+  "revenda_uso_interno", "imagem",
+]);
+const TEXTAREAS = new Set(["desc_sisc", "descricao", "aplicacoes", "caracteristicas"]);
+
+/* ===================== estado ===================== */
+let linhas = [];                 // todos os produtos do cadastro
+let porCodigo = new Map();       // codigo -> produto
+const selecionados = new Set();  // codigos marcados pra exportar
+let vista = [];                  // produtos visíveis (filtrados), em ordem
+let modalCod = null;             // produto aberto na ficha
+let dirty = false;               // ficha tem edição não salva?
+
+/* ===================== carregar catálogo ===================== */
+async function carregar() {
+  setStatus("running", "carregando");
+  try {
+    const data = await jget("/api/produtos");
+    linhas = data.linhas || [];
+    porCodigo = new Map(linhas.map((p) => [p.codigo, p]));
+    render();
+    setStatus(linhas.length ? "ok" : "idle", `cadastro · ${linhas.length}`);
+  } catch (err) {
+    setStatus("err", "erro");
+    toast("Erro ao carregar o cadastro: " + err.message, "err");
+  }
 }
 
-function setStatus(cls, txt) { status.className = "badge " + cls; status.textContent = txt; }
+function passaFiltro(p) {
+  if ($("#filtro-inc").checked && !p.incompleto) return false;
+  const q = $("#busca").value.trim().toLowerCase();
+  if (q && !(`${p.codigo} ${p.desc_sisc} ${p.aplicacoes} ${p.descricao}`.toLowerCase().includes(q))) return false;
+  return true;
+}
 
-async function processar() {
-  const f = fileInput.files[0];
-  if (!f) return;
-  linhas = []; total = 0; tbody.innerHTML = "";
-  uploader.hidden = true; secResult.hidden = false; secProg.hidden = false;
-  btnExport.hidden = false; btnNovo.hidden = false; btnProcessar.disabled = true;
-  setProgress(0, 0, "enviando…"); setStatus("running", "processando");
+/* ===================== render da tabela ===================== */
+function chipFonte(f) {
+  if (f && f.startsWith("http")) return `<span class="chip site">site</span>`;
+  if (f && f.startsWith("catálogo")) return `<span class="chip cat">catálogo</span>`;
+  return `<span class="chip none">—</span>`;
+}
+function linhaHTML(p) {
+  const st = p.incompleto ? `<span class="st rev">incompleto</span>` : `<span class="st ok">completo</span>`;
+  const sel = selecionados.has(p.codigo);
+  return `
+    <td class="cell-check"><input type="checkbox" data-sel="${esc(p.codigo)}" ${sel ? "checked" : ""}></td>
+    <td class="cell-cod">${esc(p.codigo)}</td>
+    <td class="cell-fab">${esc(p.fabricante) || "—"}</td>
+    <td class="cell-ncm">${esc(p.ncm) || "—"}</td>
+    <td class="cell-desc"><div class="clamp">${esc(p.desc_sisc) || "<span style='color:var(--text-mute)'>(sem descrição)</span>"}</div></td>
+    <td class="col-fonte">${chipFonte(p.fonte_url)}</td>
+    <td class="col-status">${st}</td>`;
+}
+function render() {
+  vista = linhas.filter(passaFiltro);
+  const tb = $("#tbody");
+  tb.innerHTML = "";
+  for (const p of vista) {
+    const tr = document.createElement("tr");
+    tr.dataset.cod = p.codigo;
+    if (p.incompleto) tr.classList.add("rev");
+    if (selecionados.has(p.codigo)) tr.classList.add("sel");
+    tr.innerHTML = linhaHTML(p);
+    tr.addEventListener("click", (e) => {
+      if (e.target.closest("input[data-sel]")) return;
+      abrirFicha(p.codigo);
+    });
+    tb.appendChild(tr);
+  }
+  const vazio = $("#vazio-filtro");
+  if (vista.length === 0) {
+    vazio.textContent = linhas.length === 0
+      ? "Cadastro vazio. Processe um invoice, importe uma planilha ou adicione um código."
+      : "Nenhum produto bate com o filtro.";
+    vazio.hidden = false;
+  } else { vazio.hidden = true; }
   atualizarMetricas();
+  sincronizarCheckAll();
+}
+function atualizarLinha(cod) {
+  const tr = $(`#tbody tr[data-cod="${CSS.escape(cod)}"]`);
+  const p = porCodigo.get(cod);
+  if (!tr || !p) return;
+  tr.classList.toggle("rev", !!p.incompleto);
+  tr.classList.toggle("sel", selecionados.has(cod));
+  tr.innerHTML = linhaHTML(p);
+}
+function atualizarMetricas() {
+  const n = linhas.length;
+  const inc = linhas.filter((p) => p.incompleto).length;
+  const ok = n - inc;
+  $("#c-total").textContent = n;
+  $("#c-ok").textContent = ok;
+  $("#c-inc").textContent = inc;
+  const pct = n ? Math.round((ok / n) * 100) : 0;
+  $("#c-prog").textContent = pct + "%";
+  $("#c-prog-fill").style.width = pct + "%";
+}
 
+/* ===================== seleção / exportar ===================== */
+function atualizarExportBtn() {
+  const n = selecionados.size;
+  const b = $("#exportar");
+  b.textContent = `Exportar (${n})`;
+  b.disabled = n === 0;
+  const info = $("#sel-info");
+  info.hidden = n === 0;
+  info.textContent = n ? `${n} selecionado${n > 1 ? "s" : ""}` : "";
+}
+function sincronizarCheckAll() {
+  const visiveis = vista.map((p) => p.codigo);
+  const todos = visiveis.length > 0 && visiveis.every((c) => selecionados.has(c));
+  $("#check-all").checked = todos;
+}
+$("#tbody").addEventListener("change", (e) => {
+  const cb = e.target.closest("input[data-sel]");
+  if (!cb) return;
+  const cod = cb.dataset.sel;
+  if (cb.checked) selecionados.add(cod); else selecionados.delete(cod);
+  const tr = cb.closest("tr");
+  if (tr) tr.classList.toggle("sel", cb.checked);
+  atualizarExportBtn();
+  sincronizarCheckAll();
+});
+$("#check-all").addEventListener("change", (e) => {
+  for (const p of vista) {
+    if (e.target.checked) selecionados.add(p.codigo); else selecionados.delete(p.codigo);
+  }
+  render();
+  atualizarExportBtn();
+});
+$("#busca").addEventListener("input", render);
+$("#filtro-inc").addEventListener("change", render);
+
+/* ===================== ficha do produto ===================== */
+function construirForm(p) {
+  const grupos = {};
+  for (const [g] of CAMPOS) grupos[g] = grupos[g] || [];
+  for (const [g, key, label, tipo, opts] of CAMPOS) grupos[g].push({ key, label, tipo, opts });
+
+  let html = "";
+  for (const g of Object.keys(grupos)) {
+    html += `<div class="grp"><div class="grp-title">${esc(g)}</div><div class="grp-fields">`;
+    for (const f of grupos[g]) {
+      const v = p[f.key] ?? "";
+      const req = OBRIGATORIOS.has(f.key);
+      const missing = (p.faltando || []).includes(f.key);
+      const cls = `fld${TEXTAREAS.has(f.key) ? " full" : ""}${req ? " req" : ""}${missing ? " missing" : ""}`;
+      let campo;
+      if (f.tipo === "textarea") {
+        campo = `<textarea data-key="${f.key}" spellcheck="false">${esc(v)}</textarea>`;
+      } else if (f.tipo === "select") {
+        const ops = f.opts.map((o) => `<option value="${esc(o)}" ${o === v ? "selected" : ""}>${esc(o || "—")}</option>`).join("");
+        campo = `<select data-key="${f.key}">${ops}</select>`;
+      } else {
+        campo = `<input data-key="${f.key}" value="${esc(v)}" autocomplete="off" spellcheck="false">`;
+      }
+      html += `<div class="${cls}"><label>${esc(f.label)}</label>${campo}</div>`;
+    }
+    html += `</div></div>`;
+  }
+  $("#ficha-form").innerHTML = html;
+  $("#ficha-form").querySelectorAll("[data-key]").forEach((el) => el.addEventListener("input", () => { dirty = true; }));
+}
+
+function renderImagem(p) {
+  const box = $("#ficha-img-box");
+  if (p.tem_imagem) {
+    box.innerHTML = `<img src="/api/produtos/${encodeURIComponent(p.codigo)}/imagem?t=${Date.now()}" alt="imagem">`;
+    $("#img-remove-btn").hidden = false;
+  } else {
+    box.innerHTML = `<span class="ficha-img-vazia">sem imagem</span>`;
+    $("#img-remove-btn").hidden = true;
+  }
+}
+function renderFalta(p) {
+  const el = $("#ficha-falta");
+  const falta = p.faltando || [];
+  if (!falta.length) { el.hidden = true; return; }
+  el.hidden = false;
+  el.innerHTML = `<span class="lab">faltando pra completar (${falta.length})</span>` +
+    falta.map((k) => `<span class="chip-f">${esc(ROTULOS[k] || k)}</span>`).join("");
+}
+
+function preencherFicha(p) {
+  modalCod = p.codigo;
+  $("#m-cod").textContent = p.codigo;
+  const badge = $("#m-status");
+  badge.className = "badge " + (p.incompleto ? "running" : "ok");
+  badge.textContent = p.incompleto ? "incompleto" : "completo";
+  const idx = vista.findIndex((x) => x.codigo === p.codigo);
+  $("#m-pos").textContent = idx >= 0 ? `${idx + 1} / ${vista.length}` : "";
+  $("#m-fonte").innerHTML = p.fonte_url ? `Fonte: ${esc(p.fonte_url)}` : "";
+  const mot = $("#m-motivos");
+  if ((p.motivos || []).length) { mot.hidden = false; mot.innerHTML = `<b>Observações da descrição:</b> ${esc(p.motivos.join("; "))}`; }
+  else mot.hidden = true;
+  renderImagem(p);
+  renderFalta(p);
+  construirForm(p);
+  dirty = false;
+}
+
+async function abrirFicha(cod) {
+  const p = porCodigo.get(cod);
+  if (!p) return;
+  preencherFicha(p);
+  $("#modal").hidden = false;
+}
+function fecharFicha() { $("#modal").hidden = true; modalCod = null; }
+
+function coletarCampos() {
+  const campos = {};
+  $("#ficha-form").querySelectorAll("[data-key]").forEach((el) => { campos[el.dataset.key] = el.value; });
+  return campos;
+}
+async function salvarFicha(stay = true) {
+  if (!modalCod) return;
+  const campos = coletarCampos();
+  try {
+    const p = await jsend(`/api/produtos/${encodeURIComponent(modalCod)}`, "PUT", { campos });
+    porCodigo.set(p.codigo, p);
+    const i = linhas.findIndex((x) => x.codigo === p.codigo);
+    if (i >= 0) linhas[i] = p;
+    atualizarLinha(p.codigo);
+    atualizarMetricas();
+    dirty = false;
+    if (stay) {
+      // atualiza status/falta sem recriar os inputs (não perde foco)
+      const badge = $("#m-status");
+      badge.className = "badge " + (p.incompleto ? "running" : "ok");
+      badge.textContent = p.incompleto ? "incompleto" : "completo";
+      renderFalta(p);
+      $("#ficha-form").querySelectorAll("[data-key]").forEach((el) => {
+        el.closest(".fld").classList.toggle("missing", (p.faltando || []).includes(el.dataset.key));
+      });
+      toast("Ficha salva", "ok");
+    }
+    return p;
+  } catch (err) { toast("Erro ao salvar: " + err.message, "err"); throw err; }
+}
+async function navFicha(dir) {
+  const idx = vista.findIndex((x) => x.codigo === modalCod);
+  const prox = idx + dir;
+  if (prox < 0 || prox >= vista.length) return;
+  if (dirty) { try { await salvarFicha(false); } catch (_) { return; } }
+  preencherFicha(vista[prox]);
+}
+
+$("#m-close").addEventListener("click", async () => { if (dirty) { try { await salvarFicha(false); } catch (_) {} } fecharFicha(); });
+$("#modal-bg").addEventListener("click", async () => { if (dirty) { try { await salvarFicha(false); } catch (_) {} } fecharFicha(); });
+$("#m-salvar").addEventListener("click", () => salvarFicha(true));
+$("#m-prev").addEventListener("click", () => navFicha(-1));
+$("#m-next").addEventListener("click", () => navFicha(+1));
+document.addEventListener("keydown", (e) => {
+  if ($("#modal").hidden) return;
+  if (e.key === "Escape") { e.preventDefault(); $("#m-close").click(); }
+  else if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); salvarFicha(true); }
+});
+
+/* ---- imagem ---- */
+$("#img-upload-btn").addEventListener("click", () => $("#img-file").click());
+$("#img-file").addEventListener("change", async () => {
+  const f = $("#img-file").files[0];
+  if (!f || !modalCod) return;
   const fd = new FormData(); fd.append("file", f);
   try {
-    const resp = await fetch(`/api/processar?ia=${chkIa.checked}`, { method: "POST", body: fd });
+    const r = await fetch(`/api/produtos/${encodeURIComponent(modalCod)}/imagem`, { method: "POST", body: fd });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const p = await r.json();
+    aplicarProduto(p);
+    toast("Imagem enviada", "ok");
+  } catch (err) { toast("Erro no upload: " + err.message, "err"); }
+  finally { $("#img-file").value = ""; }
+});
+$("#img-remove-btn").addEventListener("click", async () => {
+  if (!modalCod) return;
+  try {
+    const r = await fetch(`/api/produtos/${encodeURIComponent(modalCod)}/imagem`, { method: "DELETE" });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    aplicarProduto(await r.json());
+    toast("Imagem removida", "ok");
+  } catch (err) { toast("Erro ao remover: " + err.message, "err"); }
+});
+function aplicarProduto(p) {
+  porCodigo.set(p.codigo, p);
+  const i = linhas.findIndex((x) => x.codigo === p.codigo);
+  if (i >= 0) linhas[i] = p; else { linhas.push(p); }
+  if (modalCod === p.codigo) { renderImagem(p); renderFalta(p);
+    const badge = $("#m-status"); badge.className = "badge " + (p.incompleto ? "running" : "ok"); badge.textContent = p.incompleto ? "incompleto" : "completo"; }
+  atualizarLinha(p.codigo);
+  atualizarMetricas();
+}
+
+/* ===================== + código (buscar/cadastrar) ===================== */
+$("#add-toggle").addEventListener("click", () => {
+  const form = $("#add-form");
+  const mostrar = form.hidden;
+  form.hidden = !mostrar;
+  $("#add-toggle").textContent = mostrar ? "fechar" : "+ código";
+  if (mostrar) $("#add-input").focus();
+});
+$("#add-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const cod = $("#add-input").value.trim();
+  if (!cod) { $("#add-input").focus(); return; }
+  const ia = $("#ia").checked;
+  const btn = $("#add-go"), rotulo = btn.textContent;
+  btn.disabled = true; $("#add-input").disabled = true; btn.textContent = "buscando…";
+  try {
+    const p = await jsend(`/api/adicionar?ia=${ia}`, "POST", { codigo: cod });
+    if (!porCodigo.has(p.codigo)) linhas.push(p);
+    porCodigo.set(p.codigo, p);
+    render();
+    $("#add-input").value = "";
+    toast(`Cadastrado: ${p.codigo}`, "ok");
+    abrirFicha(p.codigo);
+  } catch (err) { toast("Erro ao adicionar: " + err.message, "err"); }
+  finally { btn.disabled = false; $("#add-input").disabled = false; btn.textContent = rotulo; $("#add-input").focus(); }
+});
+
+/* ===================== exportar ===================== */
+$("#exportar").addEventListener("click", () => {
+  if (!selecionados.size) return;
+  $("#exp-count").innerHTML = `<b>${selecionados.size}</b> produto(s) selecionado(s).`;
+  $("#exp-nome").value = "";
+  $("#exp-msg").textContent = "";
+  $("#modal-export").hidden = false;
+  $("#exp-nome").focus();
+});
+document.querySelectorAll("[data-close-export]").forEach((el) => el.addEventListener("click", () => { $("#modal-export").hidden = true; }));
+$("#exp-go").addEventListener("click", async () => {
+  const nome = $("#exp-nome").value.trim() || "planilha";
+  const tipo = document.querySelector("input[name='exp-tipo']:checked").value;
+  const codigos = [...selecionados];
+  const btn = $("#exp-go"), rotulo = btn.textContent;
+  btn.disabled = true; btn.textContent = "gerando…"; $("#exp-msg").textContent = "";
+  try {
+    const rec = await jsend("/api/exportar", "POST", { nome, tipo, codigos });
+    baixarPlanilha(rec.id);
+    $("#modal-export").hidden = true;
+    toast(`Planilha "${rec.nome}" salva (${rec.total} itens)`, "ok");
+  } catch (err) { $("#exp-msg").textContent = err.message; }
+  finally { btn.disabled = false; btn.textContent = rotulo; }
+});
+function baixarPlanilha(id) {
+  const a = document.createElement("a");
+  a.href = `/api/planilhas/${id}/download`;
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
+/* ===================== planilhas salvas ===================== */
+async function abrirPlanilhas() {
+  $("#modal-planilhas").hidden = false;
+  const lista = $("#plan-list"); lista.innerHTML = "";
+  try {
+    const data = await jget("/api/planilhas");
+    const ls = data.linhas || [];
+    $("#plan-vazio").hidden = ls.length > 0;
+    lista.innerHTML = ls.map((p) => `
+      <li class="plan-item" data-id="${p.id}">
+        <div class="pi-main">
+          <div class="pi-nome">${esc(p.nome)}</div>
+          <div class="pi-meta"><span class="pi-tipo ${p.tipo}">${p.tipo}</span> · ${p.total} itens · ${esc((p.criada_em || "").replace("T", " "))}</div>
+        </div>
+        <button class="btn-ghost sm" data-dl="${p.id}">baixar</button>
+        <button class="icon-btn" data-del="${p.id}" title="apagar">✕</button>
+      </li>`).join("");
+  } catch (err) { toast("Erro ao listar planilhas: " + err.message, "err"); }
+}
+$("#abrir-planilhas").addEventListener("click", abrirPlanilhas);
+document.querySelectorAll("[data-close-planilhas]").forEach((el) => el.addEventListener("click", () => { $("#modal-planilhas").hidden = true; }));
+$("#plan-list").addEventListener("click", async (e) => {
+  const dl = e.target.closest("[data-dl]"); const del = e.target.closest("[data-del]");
+  if (dl) { baixarPlanilha(dl.dataset.dl); return; }
+  if (del) {
+    if (!confirm("Apagar esta planilha salva?")) return;
+    try { await fetch(`/api/planilhas/${del.dataset.del}`, { method: "DELETE" }); abrirPlanilhas(); toast("Planilha apagada", "ok"); }
+    catch (err) { toast("Erro ao apagar: " + err.message, "err"); }
+  }
+});
+
+/* ===================== importar planilha ===================== */
+$("#btn-importar").addEventListener("click", () => $("#file-importar").click());
+$("#file-importar").addEventListener("change", async () => {
+  const f = $("#file-importar").files[0];
+  if (!f) return;
+  setStatus("running", "importando");
+  const fd = new FormData(); fd.append("file", f);
+  try {
+    const r = await fetch("/api/importar", { method: "POST", body: fd });
+    const j = await r.json();
+    if (!r.ok || j.erro) throw new Error(j.erro || ("HTTP " + r.status));
+    await carregar();
+    toast(`Importado: ${j.criados} novo(s), ${j.atualizados} atualizado(s)`, "ok");
+  } catch (err) { setStatus("err", "erro"); toast("Erro ao importar: " + err.message, "err"); }
+  finally { $("#file-importar").value = ""; }
+});
+
+/* ===================== processar invoice ===================== */
+const dz = $("#dropzone"), fileInv = $("#file");
+$("#btn-invoice").addEventListener("click", () => {
+  $("#modal-invoice").hidden = false;
+  $("#inv-prog").hidden = true; $("#file-name").hidden = true; $("#inv-processar").disabled = true; fileInv.value = "";
+});
+document.querySelectorAll("[data-close-invoice]").forEach((el) => el.addEventListener("click", () => { $("#modal-invoice").hidden = true; }));
+dz.addEventListener("click", () => fileInv.click());
+dz.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInv.click(); } });
+["dragover", "dragenter"].forEach((ev) => dz.addEventListener(ev, (e) => { e.preventDefault(); dz.classList.add("drag"); }));
+["dragleave", "drop"].forEach((ev) => dz.addEventListener(ev, (e) => { e.preventDefault(); dz.classList.remove("drag"); }));
+dz.addEventListener("drop", (e) => { if (e.dataTransfer.files.length) { fileInv.files = e.dataTransfer.files; mostrarInvoice(); } });
+fileInv.addEventListener("change", mostrarInvoice);
+function mostrarInvoice() {
+  const f = fileInv.files[0];
+  if (!f) return;
+  $("#file-name").textContent = f.name; $("#file-name").hidden = false; $("#inv-processar").disabled = false;
+}
+function setInvProg(n, tot, txt) { $("#inv-barra").style.width = tot ? Math.round((n / tot) * 100) + "%" : "0%"; $("#inv-prog-txt").textContent = txt; }
+
+$("#inv-processar").addEventListener("click", async () => {
+  const f = fileInv.files[0];
+  if (!f) return;
+  const ia = $("#ia").checked;
+  $("#inv-prog").hidden = false; $("#inv-processar").disabled = true; setInvProg(0, 0, "enviando…");
+  setStatus("running", "processando");
+  const processados = [];
+  let total = 0;
+  const fd = new FormData(); fd.append("file", f);
+  try {
+    const resp = await fetch(`/api/processar?ia=${ia}`, { method: "POST", body: fd });
     if (!resp.ok || !resp.body) throw new Error("HTTP " + resp.status);
     const reader = resp.body.getReader(), dec = new TextDecoder();
     let buf = "";
@@ -76,269 +499,26 @@ async function processar() {
       let nl;
       while ((nl = buf.indexOf("\n")) >= 0) {
         const ln = buf.slice(0, nl).trim(); buf = buf.slice(nl + 1);
-        if (ln) handleEvento(JSON.parse(ln));
+        if (!ln) continue;
+        const ev = JSON.parse(ln);
+        if (ev.tipo === "inicio") { total = ev.dado.total; setInvProg(0, total, `0 / ${total}`); }
+        else if (ev.tipo === "item") { processados.push(ev.dado.codigo); setInvProg(processados.length, total, `${processados.length} / ${total}`); }
+        else if (ev.tipo === "erro") { throw new Error(ev.dado.msg); }
       }
     }
+    // recarrega o cadastro e seleciona os processados pra exportar
+    await carregar();
+    selecionados.clear();
+    processados.forEach((c) => selecionados.add(c));
+    render(); atualizarExportBtn();
+    $("#modal-invoice").hidden = true;
+    setStatus("ok", `cadastro · ${linhas.length}`);
+    toast(`Invoice processado: ${processados.length} item(ns), já selecionados`, "ok");
   } catch (err) {
-    setStatus("err", "erro"); alert("Erro ao processar: " + err.message);
+    setStatus("err", "erro"); toast("Erro ao processar: " + err.message, "err"); $("#inv-processar").disabled = false;
   }
-}
-
-function handleEvento(ev) {
-  if (ev.tipo === "inicio") {
-    total = ev.dado.total; setProgress(0, total, `0 / ${total}`);
-  } else if (ev.tipo === "item") {
-    const idx = linhas.length; linhas.push(ev.dado); addRow(ev.dado, idx);
-    setProgress(linhas.length, total, `${linhas.length} / ${total}`); atualizarMetricas();
-  } else if (ev.tipo === "fim") {
-    secProg.hidden = true; setStatus("ok", "pronto"); atualizarMetricas(); aplicarFiltros();
-  } else if (ev.tipo === "erro") {
-    secProg.hidden = true; setStatus("err", "erro"); alert(ev.dado.msg);
-  }
-}
-
-/* ---------------- render da tabela ---------------- */
-function chipFonte(fonte) {
-  if (fonte && fonte.startsWith("http")) return `<span class="chip site">site</span>`;
-  if (fonte && fonte.startsWith("catálogo")) return `<span class="chip cat">catálogo</span>`;
-  return `<span class="chip none">—</span>`;
-}
-
-function addRow(d, idx) {
-  const tr = document.createElement("tr");
-  tr.dataset.idx = idx;
-  pintarLinha(tr, d);
-  tr.addEventListener("click", () => abrirModal(idx));
-  if (!passaFiltro(d)) tr.hidden = true;
-  tbody.appendChild(tr);
-}
-
-function pintarLinha(tr, d) {
-  tr.classList.toggle("rev", !!d.precisa_revisao);
-  const st = d.precisa_revisao ? `<span class="st rev">revisar</span>` : `<span class="st ok">OK</span>`;
-  tr.innerHTML = `
-    <td class="cell-cod">${esc(d.codigo)}</td>
-    <td class="cell-qtd">${d.qtd_shipped ?? ""}</td>
-    <td class="cell-ori">${esc(d.origem) || "—"}</td>
-    <td class="cell-ncm">${esc(d.ncm_sugerida) || "—"}</td>
-    <td class="cell-desc"><div class="clamp">${esc(d.descricao) || "<span style='color:var(--text-mute)'>(vazio)</span>"}</div></td>
-    <td class="col-fonte">${chipFonte(d.fonte_url)}</td>
-    <td class="col-status">${st}</td>`;
-}
-
-function atualizarLinha(idx) {
-  const tr = tbody.querySelector(`tr[data-idx="${idx}"]`);
-  if (tr) { pintarLinha(tr, linhas[idx]); tr.hidden = !passaFiltro(linhas[idx]); }
-}
-
-function esc(s) {
-  return String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-}
-
-/* ---------------- métricas ---------------- */
-function atualizarMetricas() {
-  const n = linhas.length, rev = linhas.filter((l) => l.precisa_revisao).length, ok = n - rev;
-  cTotal.textContent = n; cOk.textContent = ok; cRev.textContent = rev;
-  const pct = n ? Math.round((ok / n) * 100) : 0;
-  cProg.textContent = pct + "%"; cProgFill.style.width = pct + "%";
-}
-function setProgress(n, tot, txt) { barra.style.width = tot ? Math.round((n / tot) * 100) + "%" : "0%"; progTxt.textContent = txt; }
-
-/* ---------------- busca / filtro ---------------- */
-function passaFiltro(d) {
-  if (filtroRev.checked && !d.precisa_revisao) return false;
-  const q = busca.value.trim().toLowerCase();
-  if (q && !(`${d.codigo} ${d.descricao}`.toLowerCase().includes(q))) return false;
-  return true;
-}
-function aplicarFiltros() {
-  let visiveis = 0;
-  for (const tr of tbody.children) {
-    const ok = passaFiltro(linhas[+tr.dataset.idx]);
-    tr.hidden = !ok; if (ok) visiveis++;
-  }
-  if (visiveis === 0) {
-    vazioFiltro.textContent = linhas.length === 0
-      ? "Base vazia. Adicione um código em “+ código” ou processe um invoice."
-      : "Nenhum item bate com o filtro.";
-    vazioFiltro.hidden = false;
-  } else {
-    vazioFiltro.hidden = true;
-  }
-}
-busca.addEventListener("input", aplicarFiltros);
-filtroRev.addEventListener("change", aplicarFiltros);
-
-/* ---------------- modal de revisão ---------------- */
-function indicesVisiveis() {
-  return linhas.map((_, i) => i).filter((i) => passaFiltro(linhas[i]));
-}
-
-function abrirModal(idx) {
-  modalIdx = idx;
-  const d = linhas[idx];
-  mCod.textContent = d.codigo;
-  mStatus.className = "badge " + (d.precisa_revisao ? "running" : "ok");
-  mStatus.textContent = d.precisa_revisao ? "revisar" : "OK";
-
-  const vis = indicesVisiveis(), pos = vis.indexOf(idx);
-  mPos.textContent = pos >= 0 ? `${pos + 1} / ${vis.length}` : "";
-
-  const a = d.atributos || {};
-  const meta = [
-    ["Qtd", d.qtd_shipped, false], ["Origem", d.origem || "—", false],
-    ["NCM", d.ncm_sugerida || "—", false], ["Fonte", d.fonte_url || "—", true],
-    ["Aplicação", a.aplicacao || a.titulo || "—", true],
-  ];
-  mMeta.innerHTML = meta.map(([k, v, dim]) =>
-    `<div class="cell"><div class="k">${k}</div><div class="v${dim ? " dim" : ""}">${esc(v)}</div></div>`).join("");
-
-  if (d.precisa_revisao && (d.motivos || []).length) {
-    mMotivos.hidden = false;
-    mMotivos.innerHTML = `<b>Por que revisar:</b> ${esc(d.motivos.join("; "))}`;
-  } else { mMotivos.hidden = true; }
-
-  mDesc.value = d.descricao || "";
-  mRevisado.checked = !d.precisa_revisao;
-  modal.hidden = false;
-  mDesc.focus();
-  mDesc.setSelectionRange(mDesc.value.length, mDesc.value.length);
-  atualizarNavBtns();
-}
-
-function atualizarNavBtns() {
-  const vis = indicesVisiveis(), pos = vis.indexOf(modalIdx);
-  mPrev.disabled = pos <= 0;
-  mNext.disabled = pos < 0 || pos >= vis.length - 1;
-}
-
-function fecharModal() { modal.hidden = true; modalIdx = -1; }
-
-function salvarModal(irProximo) {
-  if (modalIdx < 0) return;
-  const d = linhas[modalIdx];
-  d.descricao = mDesc.value.trim();
-  d.precisa_revisao = !mRevisado.checked;
-  atualizarLinha(modalIdx);
-  atualizarMetricas();
-  if (irProximo) {
-    const prox = vizinhoVisivel(modalIdx, +1);
-    if (prox >= 0) { abrirModal(prox); return; }
-  }
-  fecharModal();
-}
-
-function vizinhoVisivel(fromIdx, dir) {
-  for (let i = fromIdx + dir; i >= 0 && i < linhas.length; i += dir) {
-    if (passaFiltro(linhas[i])) return i;
-  }
-  return -1;
-}
-function navegar(dir) {
-  const prox = vizinhoVisivel(modalIdx, dir);
-  if (prox >= 0) abrirModal(prox);
-}
-
-mClose.addEventListener("click", fecharModal);
-modalBg.addEventListener("click", fecharModal);
-mSalvar.addEventListener("click", () => salvarModal(false));
-mPrev.addEventListener("click", () => navegar(-1));
-mNext.addEventListener("click", () => navegar(+1));
-
-document.addEventListener("keydown", (e) => {
-  if (modal.hidden) return;
-  if (e.key === "Escape") { e.preventDefault(); fecharModal(); }
-  else if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); salvarModal(true); }
 });
 
-/* ---------------- exportar ---------------- */
-btnExport.addEventListener("click", async () => {
-  if (!linhas.length) return;
-  const rotulo = btnExport.textContent;
-  btnExport.disabled = true; btnExport.textContent = "gerando…";
-  try {
-    const resp = await fetch("/api/exportar", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ linhas }),
-    });
-    if (!resp.ok) throw new Error("HTTP " + resp.status);
-    const blob = await resp.blob(), url = URL.createObjectURL(blob), a = document.createElement("a");
-    a.href = url; a.download = "descricoes_duimp.xlsx";
-    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-  } catch (err) { alert("Erro ao exportar: " + err.message); }
-  finally { btnExport.disabled = false; btnExport.textContent = rotulo; }
-});
-
-/* ---------------- base salva (cache) + adicionar código ---------------- */
-function entrarResultados() {
-  uploader.hidden = true; secProg.hidden = true; secResult.hidden = false;
-  btnExport.hidden = false; btnNovo.hidden = false;
-}
-function renderTodas() {
-  tbody.innerHTML = "";
-  linhas.forEach((d, i) => addRow(d, i));
-  atualizarMetricas(); aplicarFiltros();
-}
-
-async function abrirBase() {
-  const r = abrirBaseBtn.textContent;
-  abrirBaseBtn.disabled = true; abrirBaseBtn.textContent = "carregando…";
-  try {
-    const resp = await fetch("/api/base");
-    if (!resp.ok) throw new Error("HTTP " + resp.status);
-    const data = await resp.json();
-    linhas = data.linhas || []; total = linhas.length; modalIdx = -1;
-    entrarResultados(); renderTodas();
-    setStatus(linhas.length ? "ok" : "idle", linhas.length ? `base · ${linhas.length}` : "base vazia");
-  } catch (err) { alert("Erro ao abrir a base: " + err.message); }
-  finally { abrirBaseBtn.disabled = false; abrirBaseBtn.textContent = r; }
-}
-
-async function baixarBase() {
-  const r = baixarBaseBtn.textContent;
-  baixarBaseBtn.disabled = true; baixarBaseBtn.textContent = "gerando…";
-  try {
-    const resp = await fetch("/api/base/planilha");
-    if (!resp.ok) throw new Error("HTTP " + resp.status);
-    const blob = await resp.blob(), url = URL.createObjectURL(blob), a = document.createElement("a");
-    a.href = url; a.download = "base_descricoes.xlsx";
-    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-  } catch (err) { alert("Erro ao baixar a base: " + err.message); }
-  finally { baixarBaseBtn.disabled = false; baixarBaseBtn.textContent = r; }
-}
-
-function toggleAddForm() {
-  const mostrar = addForm.hidden;
-  addForm.hidden = !mostrar;
-  addToggle.textContent = mostrar ? "fechar" : "+ código";
-  if (mostrar) addInput.focus();
-}
-
-async function adicionarCodigo() {
-  const cod = addInput.value.trim();
-  if (!cod) { addInput.focus(); return; }
-  const r = addGo.textContent;
-  addGo.disabled = true; addInput.disabled = true; addGo.textContent = "buscando…";
-  try {
-    const resp = await fetch(`/api/adicionar?ia=${chkIa.checked}`, {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ codigo: cod }),
-    });
-    if (!resp.ok) throw new Error("HTTP " + resp.status);
-    const d = await resp.json();
-    let idx = linhas.findIndex((l) => l.codigo === d.codigo);
-    if (idx >= 0) { linhas[idx] = d; atualizarLinha(idx); }
-    else { idx = linhas.length; linhas.push(d); addRow(d, idx); }
-    total = linhas.length;
-    atualizarMetricas(); aplicarFiltros(); flashLinha(idx);
-    addInput.value = "";
-  } catch (err) { alert("Erro ao adicionar: " + err.message); }
-  finally { addGo.disabled = false; addInput.disabled = false; addGo.textContent = r; addInput.focus(); }
-}
-
-function flashLinha(idx) {
-  const tr = tbody.querySelector(`tr[data-idx="${idx}"]`);
-  if (!tr || tr.hidden) return;
-  tr.scrollIntoView({ block: "nearest", behavior: "smooth" });
-  tr.classList.remove("flash"); void tr.offsetWidth; tr.classList.add("flash");
-}
+/* ===================== início ===================== */
+atualizarExportBtn();
+carregar();

@@ -32,7 +32,7 @@ from fastapi import FastAPI, File, Query, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from src import imagens, produto as produto_mod, saida
+from src import imagens, importacao, produto as produto_mod, saida
 from src.config import settings
 from src.descricao import carregar_templates
 from src.dominio import ItemInvoice
@@ -138,6 +138,21 @@ async def api_adicionar(request: Request, ia: bool = Query(False)):
     item = ItemInvoice(codigo=codigo, qtd_shipped=0, marca="raybestos")
     p = obter_ou_compor(item, carregar_templates(), usar_llm=ia, forcar=True)
     return to_dict(p)
+
+
+# --- importação de planilha (round-trip) -----------------------------------
+@app.post("/api/importar")
+async def api_importar(file: UploadFile = File(...)):
+    dados = await file.read()
+    if not dados:
+        return JSONResponse({"erro": "arquivo vazio"}, status_code=400)
+    try:
+        resumo = importacao.importar(dados)
+    except Exception as e:  # noqa: BLE001 — vira mensagem amigável pro front
+        return JSONResponse({"erro": f"falha ao ler a planilha: {e}"}, status_code=400)
+    if resumo.get("erro"):
+        return JSONResponse(resumo, status_code=400)
+    return resumo
 
 
 # --- exportação + planilhas salvas -----------------------------------------

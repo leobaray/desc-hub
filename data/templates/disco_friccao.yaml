@@ -1,0 +1,25 @@
+# Família: disco de fricção avulso (discos de conversor de torque da série R).
+# A DESCRIÇÃO é montada de forma determinística em src/descricao.py (_montar_disco),
+# não pela IA — formato rígido demais. Decisão do Leonardo: todos são de conversor
+# de torque; sempre "Disco de fricção {código} para conversores de torque" + medidas.
+# Aqui só importam: gatilhos (classificação), prioridade e ncm_sugerida.
+tipo: disco_friccao
+nome: Disco de fricção
+prioridade: 15
+ncm_sugerida: "8708.99.90"   # a confirmar com despachante
+
+gatilhos:
+  - "cod:R44"
+  - "cod:R40"
+  - "cod:R47"
+  - "cod:R56"
+  - "cod:R57"
+  - tcw
+  - torque converter friction
+  - torque converter plate
+  - converter wafer
+  - torque ring
+  - single-sided
+  - friction wafer
+
+denominacao: "Disco de fricção {codigo} para conversores de torque"

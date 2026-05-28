@@ -1,0 +1,27 @@
+# Família: kit de discos de fricção (friction clutch pack) — friction only.
+tipo: friction_clutch_pack
+nome: Kit de discos de fricção
+prioridade: 18
+ncm_sugerida: "8708.99.90"   # a confirmar com despachante
+
+gatilhos:
+  - friction clutch pack
+  - friction module
+  - gpz friction
+  - "rgpz"
+  - z pak
+  - z-pak
+  - "rzp"
+  - "cod:RCP"   # RCP96-* (módulos); RCPTK é pego antes pelo kit_completo (prio. maior)
+  - "cod:RHT"   # RHT96-* (módulos hybrid technology)
+
+denominacao: "Kit de discos de fricção {codigo} para transmissão automática"
+
+detalhamento_instrucoes: >
+  Monte assim: "Kit de discos de fricção {codigo} para transmissão automática
+  {aplicação: transmissão/veículo}. Composição: {quantidade de cada disco/código,
+  ex.: (5) discos GPZ775, (5) discos GPZ776, ...}." Encerre, literalmente, com:
+  "Discos de fricção produzidos com material predominantemente composto por
+  materiais orgânicos à base de celulose, podendo conter fibras de carbono,
+  resinas aglutinantes e pós metálicos, conforme a necessidade da aplicação e os
+  requisitos do fabricante." Não inclua número OE nem nome comercial em inglês.

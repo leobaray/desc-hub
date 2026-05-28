@@ -1,0 +1,26 @@
+# Família: jogo completo aço + fricção (Torqkit / Complete Set). Prioridade alta
+# pra ganhar do friction_clutch_pack quando o item é um kit completo.
+tipo: kit_completo
+nome: Jogo completo (aço + fricção)
+prioridade: 30
+ncm_sugerida: "8708.99.90"   # a confirmar com despachante
+
+gatilhos:
+  - torqkit
+  - complete set
+  - "rcptk"
+  - steel and friction
+  - combo
+
+denominacao: "Kit completo (aço + fricção) {codigo}"
+
+detalhamento_instrucoes: >
+  Monte assim: "Kit completo (aço + fricção) {codigo}. {finalidade, se houver}.
+  Composição: {quantos de cada sub-kit/componente, traduzido, ex.: 1 Torqkit
+  dianteiro (Front Direct), 1 Torqkit traseiro (Rear Forward), 1 Torqkit de
+  overdrive, 1 combo Overdrive Direct (aço e fricção)}." Encerre, literalmente,
+  com: "Discos de fricção produzidos com material predominantemente composto por
+  materiais orgânicos à base de celulose, podendo conter fibras de carbono,
+  resinas aglutinantes e pós metálicos, conforme a necessidade da aplicação e os
+  requisitos do fabricante." Não inclua número OE, nome comercial em inglês nem
+  faixa de anos.

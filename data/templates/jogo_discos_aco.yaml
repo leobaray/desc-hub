@@ -1,0 +1,20 @@
+# Família: jogo de discos de aço (steel module / steel clutch pack).
+tipo: jogo_discos_aco
+nome: Jogo de discos de aço
+prioridade: 20
+ncm_sugerida: "8708.99.90"   # a confirmar com despachante
+
+gatilhos:
+  - steel module
+  - steel clutch pack
+  - steel clutch
+  - steel reaction
+# Nada de "stm" solto — casava com "Use with STMxxx" (peça companheira) na
+# composição de packs de fricção. Steel module o site rotula como "Steel ...".
+
+denominacao: "Jogo de discos de aço {codigo} para transmissão automática"
+
+detalhamento_instrucoes: >
+  Monte assim: "Jogo de discos de aço {codigo} para transmissão automática
+  {aplicação}. Composição: {quantidade de cada disco de aço/reação, traduzido}."
+  Não inclua número OE nem nome comercial em inglês.

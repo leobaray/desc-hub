@@ -1,0 +1,20 @@
+# Família: anel de vedação / O-ring. Gatilhos específicos — sem "ring"/"seal"
+# soltos, que roubavam disco de fricção "Torque Ring" e filtro "lip seal".
+tipo: anel_vedacao
+nome: Anel de vedação
+prioridade: 5
+ncm_sugerida: "8484.20.00"   # a confirmar com despachante
+
+gatilhos:
+  - o-ring
+  - oring
+  - o ring
+  - anel de veda
+  - sealing ring
+  - retentor
+
+denominacao: "Anel de vedação {codigo} para sistemas de transmissão automotiva"
+
+detalhamento_instrucoes: >
+  Cite o código, a aplicação e (se houver) diâmetro interno e seção. Linguagem
+  técnica e objetiva. Não inclua número OE.

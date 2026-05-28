@@ -1,0 +1,123 @@
+Padrões definidos para descrições SISCOMEX / DUIMP
+1. Jogo de discos de aço (steel clutch pack)
+Estrutura obrigatória
+
+Começar sempre com:
+
+“Jogo de discos de aço {CÓDIGO} (steel clutch pack) para transmissão automática {modelo}, composto por {N} discos de aço: ...”
+
+Estrutura interna
+
+Depois dos “:” listar os discos separados por “;”.
+
+Formato de cada item:
+
+{qtd} {posição} ({dentes} dentes, {DE} mm x {ESP} mm)
+
+Exemplo completo
+
+Jogo de discos de aço 12345 (steel clutch pack) para transmissão automática 6L80, composto por 5 discos de aço: 3 discos underdrive (36 dentes, 152 mm x 2,0 mm); 2 discos overdrive (30 dentes, 145 mm x 1,8 mm).
+
+2. Anéis de vedação
+Estrutura obrigatória
+
+Sempre usar:
+
+“Anel de vedação tipo {perfil} {CÓDIGO} para sistemas de transmissão automotiva, com diâmetro interno de {DI} mm e seção nominal de {SEÇÃO}.”
+
+Exemplo
+
+Anel de vedação tipo O-ring 98765 para sistemas de transmissão automotiva, com diâmetro interno de 45 mm e seção nominal de 3,5 mm.
+
+3. Terminologia obrigatória
+Nunca usar
+
+“cubo do impulsor flangeado”
+
+Sempre usar
+
+“cubo do impulsor com flange”
+
+4. Regra padrão para códigos Raybestos
+
+Quando você enviar apenas o código/part number:
+
+Assumir automaticamente que é Raybestos
+Pesquisar aplicação e características
+Montar a descrição no padrão DUIMP
+5. Formato de resposta para códigos Raybestos
+
+Quando você enviar somente o código:
+
+Responder APENAS com:
+
+Denominação do produto:
+Detalhamento complementar do produto:
+
+Não enviar:
+TIPO
+APLICAÇÃO
+DADOS
+Explicações intermediárias
+Estrutura técnica auxiliar
+6. Padrão implícito que vem sendo seguido
+Linguagem
+Técnica
+Objetiva
+Sem marketing
+Sem adjetivos desnecessários
+Foco em:
+função
+aplicação
+composição
+dimensões
+quantidade
+tipo construtivo
+7. Estrutura ideal das descrições DUIMP
+Denominação do produto
+
+Nome técnico direto do item.
+
+Detalhamento complementar do produto
+
+Informações complementares relevantes:
+
+aplicação
+composição
+medidas
+quantidade
+perfil
+dentes
+espessura
+posição funcional
+compatibilidade
+8. Padrão de escrita técnica
+Separadores
+usar “;” para múltiplos itens
+usar “:” após introdução principal
+
+medidas no formato:
+
+{DE} mm x {ESP} mm
+
+Quantidade
+
+Sempre explícita.
+
+Aplicação
+
+Sempre citar:
+
+“para transmissão automática ...”
+
+quando aplicável.
+
+9. Objetivo do padrão
+
+As descrições precisam:
+
+reduzir exigência fiscal
+evitar genericidade
+deixar função e identificação claras
+manter consistência entre DUIMPs
+evitar ambiguidades técnicas

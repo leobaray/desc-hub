@@ -1,0 +1,25 @@
+# Família: embreagem unidirecional tipo sprag (roda livre)
+# Veio do brainstorm com o Claude (formato por atributos pra DUIMP).
+# ATENÇÃO NCM: sprag/roda-livre tende a 8483.60.10 (embreagens/acoplamentos),
+# NÃO 8482 (rolamentos), apesar do nome comercial "rolamento". Confirmar com despachante.
+tipo: sprag_roda_livre
+nome: Embreagem unidirecional tipo sprag (roda livre)
+ncm_sugerida: "8483.60.10"
+
+gatilhos:
+  - sprag
+  - roda livre
+  - one-way
+  - freewheel
+  - "ps9"
+  - "ps90"
+
+denominacao: "EMBREAGEM UNIDIRECIONAL TIPO SPRAG (RODA LIVRE) {codigo} {marca}"
+
+detalhamento_instrucoes: >
+  Ordem: tipo genérico -> marca -> modelo/part number -> característica
+  (nº de cames/sprags) -> aplicação (modelos de conversor/transmissão) -> uso
+  (peça de reposição automotiva, nova). Função: transmissão de torque em sentido
+  único com rotação livre no sentido oposto. Incluir material quando disponível.
+
+campos_recomendados: [cames, aplicacao, material, fabricante, pais_origem]

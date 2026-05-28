@@ -1,0 +1,14 @@
+# Família: disco de fricção de embreagem de transmissão (catálogo: "Friction
+# Plates" avulsos, ex.: 512568, 512659). Descrição montada de forma determinística
+# em src/descricao.py (_montar_disco_trans) — nunca cita material comercial (high
+# energy, kevlar…) nem dentes/medidas avulsas. Prioridade baixa pra só pegar o que
+# nenhuma família melhor pegou.
+tipo: disco_friccao_trans
+nome: Disco de fricção (transmissão)
+prioridade: 12
+ncm_sugerida: "8708.99.90"   # a confirmar com despachante
+
+gatilhos:
+  - friction plates
+
+denominacao: "Disco de fricção {codigo} para transmissão automática"

@@ -1,0 +1,25 @@
+# Família: filtro de transmissão automática. Junta é CONDICIONAL: só entra
+# quando o site tem Gasket Type (vira junta_ref) — senão, não se menciona junta.
+tipo: filtro
+nome: Filtro de transmissão automática
+prioridade: 25
+ncm_sugerida: "8708.93.90"   # a confirmar com despachante
+
+gatilhos:
+  - filter
+  - filtro
+  - sump
+  - cartridge filter
+  - pan filter
+
+denominacao: "Filtro hidráulico {codigo} para transmissão automática"
+
+detalhamento_instrucoes: >
+  Monte assim: "Filtro hidráulico {codigo}{ acrescente ' com junta' SOMENTE se
+  houver junta_ref} para transmissões automáticas {aplicação: marca/modelo}. Em
+  {metal se o campo material contiver 'Metal'; plástico se contiver 'Plastic'}."
+  Se houver 'junta_ref' nos dados, acrescente em seguida: " Junta inclusa sob
+  referência {junta_ref}, aplicação com {parafusos} parafusos de fixação do
+  cárter." Se NÃO houver junta_ref, não mencione junta de forma alguma (nem 'com
+  junta', nem 'sem junta'). Encerre com: " Destinado à substituição OEM em
+  retíficas." Não inclua número OE.

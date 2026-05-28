@@ -1,0 +1,21 @@
+# Família: cinta/faixa de freio (transmission band).
+tipo: transmission_band
+nome: Cinta de freio
+prioridade: 25
+ncm_sugerida: "8708.99.90"   # a confirmar com despachante
+
+gatilhos:
+  - "band"
+  - faixa
+  - cinta
+
+denominacao: "Cinta de freio {codigo} para transmissão automática"
+
+detalhamento_instrucoes: >
+  Monte UMA frase, exatamente neste formato: "Cinta de freio {codigo} para
+  transmissão automática {aplicação: transmissão/veículo}, em aço com design de
+  chassi aberto (open-chassis), revestida por material de fricção predominantemente
+  composto por materiais orgânicos à base de celulose, podendo conter fibras de
+  carbono, resinas aglutinantes e pós metálicos, conforme a necessidade da
+  aplicação e os requisitos do fabricante, destinada à substituição OEM em
+  retíficas de transmissões automáticas." Não inclua número OE nem faixa de anos.

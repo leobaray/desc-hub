@@ -19,6 +19,13 @@ class Settings(BaseSettings):
     cache_dir: Path = Path("./data/cache")
     saida_dir: Path = Path("./data/saida")
 
+    # Centro do sistema: o cadastro de produtos vive aqui (SQLite, 1 arquivo).
+    db_path: Path = Path("./data/app.db")
+    # Store de imagens (uma por código): data/imagens/{codigo}.jpg.
+    imagens_dir: Path = Path("./data/imagens")
+    # Planilhas exportadas e salvas (cada uma na sua pasta: xlsx + imagens/).
+    planilhas_dir: Path = Path("./data/planilhas")
+
     host: str = "0.0.0.0"
     port: int = 8000
 

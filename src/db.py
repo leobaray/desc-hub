@@ -36,6 +36,7 @@ _COLUNAS_PRODUTO = [
     "nve_processo",
     "nve_acabamento",
     "pais_origem",
+    "fabric_revend",         # Siscomex "Fabricante/Revendedor" (≠ revenda_uso_interno)
     # --- bloco extra (só na planilha completa) ---
     "descricao",             # descrição geral/comercial (manual; != desc_sisc)
     "un_medida_entrada",
@@ -73,6 +74,12 @@ CREATE TABLE IF NOT EXISTS planilha (
     criada_em   TEXT NOT NULL
 );
 
+-- Padrões nível-declaração (mesmo valor pra todos os itens): pais_origem, fabric_revend.
+CREATE TABLE IF NOT EXISTS configuracoes (
+    chave TEXT PRIMARY KEY,
+    valor TEXT NOT NULL DEFAULT ''
+);
+
 CREATE INDEX IF NOT EXISTS idx_produto_fabricante ON produto(fabricante);
 """
 
@@ -104,12 +111,17 @@ _INICIALIZADO = False
 
 
 def inicializar() -> None:
-    """Cria as tabelas se não existirem. Idempotente; barato de chamar sempre."""
+    """Cria as tabelas se não existirem e auto-migra colunas novas. Idempotente."""
     global _INICIALIZADO
     if _INICIALIZADO:
         return
     with conectar() as conn:
         conn.executescript(_SCHEMA)
+        # auto-migração: bancos antigos ganham colunas novas sem precisar recriar
+        existentes = {r["name"] for r in conn.execute("PRAGMA table_info(produto)")}
+        for col in _COLUNAS_PRODUTO:
+            if col not in existentes:
+                conn.execute(f"ALTER TABLE produto ADD COLUMN {col} TEXT DEFAULT ''")
     _INICIALIZADO = True
 
 

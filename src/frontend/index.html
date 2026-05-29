@@ -18,6 +18,7 @@
         <span class="toggle-track" aria-hidden="true"><span class="toggle-knob"></span></span>
         <span class="toggle-label">IA</span>
       </label>
+      <button class="btn-ghost" id="abrir-padroes">Padrões</button>
       <button class="btn-ghost" id="abrir-planilhas">Planilhas</button>
       <button class="btn-primary" id="exportar" disabled>Exportar (0)</button>
     </div>
@@ -152,6 +153,34 @@
       <div class="modal-body">
         <ul class="plan-list" id="plan-list"></ul>
         <p class="vazio-filtro" id="plan-vazio" hidden>Nenhuma planilha salva ainda.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== Modal: padrões ===================== -->
+  <div class="modal" id="modal-padroes" hidden>
+    <div class="modal-backdrop" data-close-padroes></div>
+    <div class="modal-card modal-sm" role="dialog" aria-modal="true">
+      <div class="modal-head">
+        <div class="modal-head-l"><span class="m-cod" style="font-size:15px">Padrões da planilha</span></div>
+        <div class="modal-head-actions"><button class="icon-btn" data-close-padroes title="Fechar">✕</button></div>
+      </div>
+      <div class="modal-body">
+        <p class="m-hint" style="margin:0 0 14px">Valores iguais pra todo item (nível da declaração). Cada linha da planilha recebe; um produto pode sobrescrever na ficha. Preencher aqui também tira esses campos do “incompleto”.</p>
+        <div class="m-field">
+          <label class="m-label" for="pad-pais">País de origem</label>
+          <input class="inp" id="pad-pais" placeholder="ex.: ESTADOS UNIDOS" autocomplete="off">
+        </div>
+        <div class="m-field" style="margin-top:14px">
+          <label class="m-label" for="pad-fr">Fabric/Revend (Siscomex)</label>
+          <input class="inp" id="pad-fr" placeholder="ex.: Revendedor" autocomplete="off">
+        </div>
+      </div>
+      <div class="modal-foot">
+        <span class="m-hint" id="pad-msg"></span>
+        <span class="toolbar-spacer"></span>
+        <button class="btn-ghost" data-close-padroes>Cancelar</button>
+        <button class="btn-primary" id="pad-go">Salvar padrões</button>
       </div>
     </div>
   </div>

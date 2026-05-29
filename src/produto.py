@@ -20,7 +20,7 @@ import json
 from dataclasses import asdict, dataclass, field, fields
 from datetime import datetime
 
-from src import db
+from src import configuracoes, db
 from src.catalogo import buscar_no_catalogo
 from src.dominio import DescricaoDUIMP, ItemInvoice, SpecProduto
 
@@ -41,6 +41,7 @@ class Produto:
     nve_processo: str = ""
     nve_acabamento: str = ""
     pais_origem: str = ""
+    fabric_revend: str = ""   # Siscomex "Fabricante/Revendedor" (≠ revenda_uso_interno)
     # --- bloco extra (planilha completa) ---
     descricao: str = ""
     un_medida_entrada: str = ""
@@ -68,15 +69,15 @@ class Produto:
 CAMPOS_OBRIGATORIOS = [
     "fabricante", "cod_ss", "cod_sisc", "peso", "medida", "ncm", "desc_sisc",
     "nve_materia_prima", "nve_processo", "nve_acabamento", "pais_origem",
-    "descricao", "un_medida_entrada", "qtd_embalagem_entrada", "un_medida_saida",
-    "qtd_embalagem_saida", "localizacao_estoque", "aplicacoes", "veiculos",
-    "revenda_uso_interno", "imagem",
+    "fabric_revend", "descricao", "un_medida_entrada", "qtd_embalagem_entrada",
+    "un_medida_saida", "qtd_embalagem_saida", "localizacao_estoque", "aplicacoes",
+    "veiculos", "revenda_uso_interno", "imagem",
 ]
 
-# Campos que SÓ o humano/importação preenche — o pipeline nunca sobrescreve.
+# Campos que SÓ o humano/importação/padrão preenche — o pipeline nunca sobrescreve.
 _CAMPOS_MANUAIS = {
     "peso", "medida", "cod_ss", "cod_sisc", "nve_materia_prima", "nve_processo",
-    "nve_acabamento", "un_medida_entrada", "qtd_embalagem_entrada",
+    "nve_acabamento", "fabric_revend", "un_medida_entrada", "qtd_embalagem_entrada",
     "un_medida_saida", "qtd_embalagem_saida", "localizacao_estoque", "descricao",
     "caracteristicas", "revenda_uso_interno", "imagem",
 }
@@ -90,7 +91,17 @@ def _agora() -> str:
 
 # --- completude (a regra do "laranja") -------------------------------------
 def campos_faltando(p: Produto) -> list[str]:
-    return [c for c in CAMPOS_OBRIGATORIOS if not str(getattr(p, c, "") or "").strip()]
+    """Obrigatórios vazios. Os campos nível-declaração (pais_origem, fabric_revend)
+    não contam como faltando se houver padrão global setado — o export preenche."""
+    padroes = configuracoes.obter()
+    falta: list[str] = []
+    for c in CAMPOS_OBRIGATORIOS:
+        if str(getattr(p, c, "") or "").strip():
+            continue
+        if c in configuracoes.PADROES and (padroes.get(c) or "").strip():
+            continue
+        falta.append(c)
+    return falta
 
 
 def incompleto(p: Produto) -> bool:

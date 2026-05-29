@@ -39,6 +39,7 @@ const CAMPOS = [
   ["DUIMP", "medida", "Medida", "text"],
   ["DUIMP", "cclasstrib", "cClassTrib", "text"],
   ["DUIMP", "pais_origem", "País de origem", "text"],
+  ["DUIMP", "fabric_revend", "Fabric/Revend (Siscomex)", "text"],
   ["DUIMP", "nve_materia_prima", "NVE matéria-prima", "text"],
   ["DUIMP", "nve_processo", "NVE processo", "text"],
   ["DUIMP", "nve_acabamento", "NVE acabamento", "text"],
@@ -59,10 +60,12 @@ ROTULOS.imagem = "Imagem";
 const OBRIGATORIOS = new Set([
   "fabricante", "cod_ss", "cod_sisc", "peso", "medida", "ncm", "desc_sisc",
   "nve_materia_prima", "nve_processo", "nve_acabamento", "pais_origem",
-  "descricao", "un_medida_entrada", "qtd_embalagem_entrada", "un_medida_saida",
-  "qtd_embalagem_saida", "localizacao_estoque", "aplicacoes", "veiculos",
-  "revenda_uso_interno", "imagem",
+  "fabric_revend", "descricao", "un_medida_entrada", "qtd_embalagem_entrada",
+  "un_medida_saida", "qtd_embalagem_saida", "localizacao_estoque", "aplicacoes",
+  "veiculos", "revenda_uso_interno", "imagem",
 ]);
+// Campos com padrão global (não-laranja quando o padrão está setado).
+const COM_PADRAO = new Set(["pais_origem", "fabric_revend"]);
 const TEXTAREAS = new Set(["desc_sisc", "descricao", "aplicacoes", "caracteristicas"]);
 
 /* ===================== estado ===================== */
@@ -72,12 +75,14 @@ const selecionados = new Set();  // codigos marcados pra exportar
 let vista = [];                  // produtos visíveis (filtrados), em ordem
 let modalCod = null;             // produto aberto na ficha
 let dirty = false;               // ficha tem edição não salva?
+let padroes = {};                // padrões nível-declaração (pais_origem, fabric_revend)
 
 /* ===================== carregar catálogo ===================== */
 async function carregar() {
   setStatus("running", "carregando");
   try {
-    const data = await jget("/api/produtos");
+    const [data, pad] = await Promise.all([jget("/api/produtos"), jget("/api/configuracoes")]);
+    padroes = pad || {};
     linhas = data.linhas || [];
     porCodigo = new Map(linhas.map((p) => [p.codigo, p]));
     render();
@@ -215,7 +220,8 @@ function construirForm(p) {
         const ops = f.opts.map((o) => `<option value="${esc(o)}" ${o === v ? "selected" : ""}>${esc(o || "—")}</option>`).join("");
         campo = `<select data-key="${f.key}">${ops}</select>`;
       } else {
-        campo = `<input data-key="${f.key}" value="${esc(v)}" autocomplete="off" spellcheck="false">`;
+        const ph = (!v && COM_PADRAO.has(f.key) && padroes[f.key]) ? ` placeholder="padrão: ${esc(padroes[f.key])}"` : "";
+        campo = `<input data-key="${f.key}" value="${esc(v)}"${ph} autocomplete="off" spellcheck="false">`;
       }
       html += `<div class="${cls}"><label>${esc(f.label)}</label>${campo}</div>`;
     }
@@ -439,6 +445,31 @@ $("#plan-list").addEventListener("click", async (e) => {
     try { await fetch(`/api/planilhas/${del.dataset.del}`, { method: "DELETE" }); abrirPlanilhas(); toast("Planilha apagada", "ok"); }
     catch (err) { toast("Erro ao apagar: " + err.message, "err"); }
   }
+});
+
+/* ===================== padrões (nível-declaração) ===================== */
+async function abrirPadroes() {
+  try {
+    padroes = await jget("/api/configuracoes") || {};
+    $("#pad-pais").value = padroes.pais_origem || "";
+    $("#pad-fr").value = padroes.fabric_revend || "";
+    $("#pad-msg").textContent = "";
+    $("#modal-padroes").hidden = false;
+    $("#pad-pais").focus();
+  } catch (err) { toast("Erro ao abrir padrões: " + err.message, "err"); }
+}
+$("#abrir-padroes").addEventListener("click", abrirPadroes);
+document.querySelectorAll("[data-close-padroes]").forEach((el) => el.addEventListener("click", () => { $("#modal-padroes").hidden = true; }));
+$("#pad-go").addEventListener("click", async () => {
+  const btn = $("#pad-go"), rotulo = btn.textContent;
+  btn.disabled = true; btn.textContent = "salvando…"; $("#pad-msg").textContent = "";
+  try {
+    padroes = await jsend("/api/configuracoes", "PUT", { padroes: { pais_origem: $("#pad-pais").value.trim(), fabric_revend: $("#pad-fr").value.trim() } });
+    await carregar();                 // recarrega: completude muda com o padrão
+    $("#modal-padroes").hidden = true;
+    toast("Padrões salvos", "ok");
+  } catch (err) { $("#pad-msg").textContent = err.message; }
+  finally { btn.disabled = false; btn.textContent = rotulo; }
 });
 
 /* ===================== importar planilha ===================== */

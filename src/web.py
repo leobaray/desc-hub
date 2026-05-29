@@ -32,7 +32,7 @@ from fastapi import FastAPI, File, Query, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from src import imagens, importacao, produto as produto_mod, saida
+from src import configuracoes, imagens, importacao, produto as produto_mod, saida
 from src.config import settings
 from src.descricao import carregar_templates
 from src.dominio import ItemInvoice
@@ -48,6 +48,18 @@ app.mount("/static", StaticFiles(directory=FRONT_DIR), name="static")
 @app.get("/", response_class=HTMLResponse)
 def index() -> str:
     return (FRONT_DIR / "index.html").read_text(encoding="utf-8")
+
+
+# --- padrões nível-declaração (país de origem, fabric/revend) ---------------
+@app.get("/api/configuracoes")
+def api_get_config():
+    return configuracoes.obter()
+
+
+@app.put("/api/configuracoes")
+async def api_set_config(request: Request):
+    body = await request.json()
+    return configuracoes.salvar(body.get("padroes", body))
 
 
 # --- cadastro de produtos ---------------------------------------------------

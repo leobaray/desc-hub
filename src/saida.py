@@ -17,7 +17,7 @@ import zipfile
 from datetime import datetime
 from pathlib import Path
 
-from src import db, imagens, produto as produto_mod
+from src import configuracoes, db, imagens, produto as produto_mod
 from src.config import settings
 from src.produto import Produto
 
@@ -32,11 +32,11 @@ COLUNAS_DUIMP: list[tuple[str, str | None]] = [
     ("Medida", "medida"),
     ("NCM", "ncm"),
     ("Descrição", "desc_sisc"),
-    ("Fabric/Revend", None),
+    ("Fabric/Revend", "_fabric_revend"),
     ("NVE - MATÉRIA PRIMA BASE", "nve_materia_prima"),
     ("NVE - PROCESSO DE FABRICAÇÃO", "nve_processo"),
     ("NVE - ACABAMENTO SUPERFICIAL", "nve_acabamento"),
-    ("País de origem", "pais_origem"),
+    ("País de origem", "_pais_origem"),
     ("Precisa revisão", "_precisa_revisao"),  # apoio
     ("Motivos", "_motivos"),                   # apoio
     ("Fonte", "fonte_url"),                     # apoio
@@ -55,7 +55,7 @@ COLUNAS_COMPLETA: list[tuple[str, str | None]] = [
     ("NVE - Matéria-prima base", "nve_materia_prima"),
     ("NVE - Processo de fabricação", "nve_processo"),
     ("NVE - Acabamento superficial", "nve_acabamento"),
-    ("País de origem", "pais_origem"),
+    ("País de origem", "_pais_origem"),
     ("Descrição", "descricao"),
     ("Un. medida entrada", "un_medida_entrada"),
     ("Qtd. embalagem entrada", "qtd_embalagem_entrada"),
@@ -81,6 +81,10 @@ def _valor(p: Produto, campo: str | None) -> object:
         return "; ".join(p.motivos)
     if campo == "_imagem":
         return imagens.nome_arquivo(p.codigo) if imagens.tem(p.codigo) else ""
+    if campo == "_pais_origem":
+        return (p.pais_origem or "").strip() or configuracoes.valor("pais_origem")
+    if campo == "_fabric_revend":
+        return (p.fabric_revend or "").strip() or configuracoes.valor("fabric_revend")
     return getattr(p, campo, "") or ""
 
 

@@ -457,7 +457,94 @@ class SonnaxSpecs:
         )
 
 
+class TricomponentSpecs:
+    """Site da Tricomponent (tricomponent.com). /searchresult?keyword= devolve uma
+    TABELA de produtos (não redireciona). Cada linha tem 4 células: Part ID
+    (PART# + Reference Part#), Description (tipo), Specification (dimensões em
+    POLEGADAS) e Application (make/modelo). A URL /part/<Cat>/<Make>/<Modelo>/<Tipo>/
+    <CÓDIGO> é o âncora — casamos SÓ a linha cujo link /part/ termina no nosso
+    código exato (a página de detalhe mistura "Similar Parts" e engana, então NÃO
+    a usamos). Sem match exato / "no results" -> encontrado=False (nunca chute).
+
+    Dimensões: o site mostra em polegadas (1.999"); convertemos SEMPRE pra mm (×25.4).
+    Guardamos também o Reference Part# (cross-ref Sonnax/OE) como referência interna.
+    """
+
+    marca = "tricomponent"
+    url_base = "https://tricomponent.com"
+
+    _RE_POL = re.compile(r'(\d+(?:\.\d+)?)\s*"')
+
+    def _mm(self, texto: str) -> str:
+        """Converte toda medida em polegadas (n") pra mm; resto do texto intacto."""
+        def conv(m):
+            return f"{float(m.group(1)) * 25.4:.2f}".rstrip("0").rstrip(".") + "mm"
+        return self._RE_POL.sub(conv, texto)
+
+    def _get(self, url: str, params: dict | None = None) -> str:
+        r = httpx.get(
+            url, params=params, timeout=settings.http_timeout,
+            follow_redirects=True, headers={"User-Agent": _UA},
+        )
+        r.raise_for_status()
+        return r.text
+
+    def buscar(self, item: ItemInvoice) -> SpecProduto:
+        try:
+            tree = HTMLParser(self._get(f"{self.url_base}/searchresult", params={"keyword": item.codigo}))
+        except Exception:
+            return SpecProduto(codigo=item.codigo, marca=self.marca, encontrado=False, fonte_url=self.url_base)
+
+        alvo = _norm(item.codigo)
+        linha = None
+        href = ""
+        for a in tree.css("a"):
+            h = a.attributes.get("href") or ""
+            if "/part/" in h and _norm(h.rstrip("/").rsplit("/", 1)[-1]) == alvo:
+                node = a
+                while node is not None and node.tag != "tr":
+                    node = node.parent
+                if node is not None:
+                    linha, href = node, h
+                    break
+        if linha is None:  # nenhuma linha com o código exato -> não chuta
+            return SpecProduto(codigo=item.codigo, marca=self.marca, encontrado=False, fonte_url=self.url_base)
+
+        cels = [_node_text(td) for td in linha.css("td")]
+        i = next((k for k, c in enumerate(cels) if "PART#" in c), 0)
+        partid = cels[i] if i < len(cels) else ""
+        tipo = cels[i + 1] if i + 1 < len(cels) else ""
+        spec = cels[i + 2] if i + 2 < len(cels) else ""
+        aplicacao = cels[i + 3] if i + 3 < len(cels) else ""
+
+        ref = ""
+        m = re.search(r"Reference Part#:\s*(.+)$", partid)
+        if m:
+            ref = m.group(1).strip()
+        medidas = self._mm(spec) if '"' in spec else spec
+
+        url = href if href.startswith("http") else self.url_base + href
+        atributos = {
+            "titulo": tipo,
+            "categoria": tipo,
+            "aplicacao": aplicacao,
+            "descricao": tipo,
+            "medidas": medidas,      # SEMPRE em mm
+            "referencia": ref,       # cross-ref Sonnax/OE (uso interno, não vai pra DUIMP)
+            "codigo_site": item.codigo,
+        }
+        return SpecProduto(
+            codigo=item.codigo,
+            marca=self.marca,
+            encontrado=True,
+            fonte_url=url,
+            atributos={k: v for k, v in atributos.items() if v},
+            confianca="alta",  # casou pelo link /part/.../CÓDIGO exato
+        )
+
+
 registrar_fonte(RaybestosSpecs())
 registrar_fonte(AllomaticSpecs())
 registrar_fonte(SonnaxSpecs())
-# Próximas marcas: alto, psbearings, tricomponent.
+registrar_fonte(TricomponentSpecs())
+# Próximas marcas: alto, psbearings.

@@ -48,6 +48,13 @@ def carregar_export(origem: str | Path | bytes) -> list[dict]:
     return json.loads(dados.decode("utf-8"))
 
 
+def _norm_num(c: str) -> str | None:
+    """Forma normalizada de um código puramente numérico (sem zero à esquerda).
+    Só numérico — pra casar nosso '016371' com o '16371' do Siscomex sem risco."""
+    c = str(c).strip()
+    return c.lstrip("0") if c.isdigit() else None
+
+
 def _indexar_por_interno(prods: list[dict]) -> tuple[dict[str, list[dict]], int]:
     por_interno: dict[str, list[dict]] = defaultdict(list)
     sem_interno = 0
@@ -66,15 +73,34 @@ def importar_export(origem: str | Path | bytes) -> dict:
     por_interno, sem_interno = _indexar_por_interno(prods)
     nossos = {p.codigo for p in produto_mod.listar()}
 
+    # índice normalizado (só códigos numéricos puros) pra casar apesar de zero à esquerda
+    norm_idx: dict[str, list[str]] = defaultdict(list)
+    for c in nossos:
+        n = _norm_num(c)
+        if n:
+            norm_idx[n].append(c)
+
+    def resolver(ci: str) -> str | None:
+        """Código nosso correspondente: exato; senão numérico-normalizado SE for único."""
+        ci = str(ci).strip()
+        if ci in nossos:
+            return ci
+        n = _norm_num(ci)
+        cand = norm_idx.get(n) if n else None
+        return cand[0] if cand and len(cand) == 1 else None
+
     atualizados = 0
     conflitos: list[dict] = []
+    orfaos: list[str] = []
     campos_set: Counter = Counter()
 
     for ci, ps in por_interno.items():
-        if ci not in nossos:
+        alvo = resolver(ci)            # o NOSSO código (pode diferir do ci por zero à esquerda)
+        if alvo is None:
+            orfaos.append(str(ci).strip())
             continue
         if len(ps) > 1:  # mesmo código nosso -> vários produtos Siscomex: não chuta
-            conflitos.append({"codigo": ci, "siscomex": [s.get("codigo") for s in ps]})
+            conflitos.append({"codigo": alvo, "siscomex": [s.get("codigo") for s in ps]})
             continue
         s = ps[0]
         campos: dict[str, str] = {}
@@ -90,7 +116,7 @@ def importar_export(origem: str | Path | bytes) -> dict:
         # NCM: deliberadamente NÃO copiado.
         if campos:
             campos["fonte_url"] = FONTE
-            produto_mod.atualizar_campos(ci, campos)
+            produto_mod.atualizar_campos(alvo, campos)
             atualizados += 1
             for k in campos:
                 campos_set[k] += 1
@@ -99,7 +125,7 @@ def importar_export(origem: str | Path | bytes) -> dict:
         "produtos_no_export": len(prods),
         "casaram_atualizados": atualizados,
         "conflitos": conflitos,
-        "orfaos_no_export": sorted(set(por_interno) - nossos),
+        "orfaos_no_export": sorted(orfaos),
         "sem_codigo_interno": sem_interno,
         "campos_preenchidos": dict(campos_set),
     }

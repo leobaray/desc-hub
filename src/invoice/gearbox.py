@@ -45,7 +45,7 @@ class GearboxParser:
         t = texto.lower()
         return "raybestos powertrain" in t or "gearbox" in t
 
-    def extrair(self, paginas: list[str]) -> list[ItemInvoice]:
+    def extrair(self, paginas: list[str], pdf=None) -> list[ItemInvoice]:
         itens: list[ItemInvoice] = []
         for n_pagina, texto in enumerate(paginas, 1):
             linhas = [ln.strip() for ln in texto.splitlines()]

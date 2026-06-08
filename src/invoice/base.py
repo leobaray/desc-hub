@@ -26,8 +26,12 @@ class ParserInvoice(Protocol):
         """True se este parser reconhece o layout (pelo cabeçalho do invoice)."""
         ...
 
-    def extrair(self, paginas: list[str]) -> list[ItemInvoice]:
-        """Extrai os itens de forma determinística (regex/parser, sem LLM)."""
+    def extrair(self, paginas: list[str], pdf=None) -> list[ItemInvoice]:
+        """Extrai os itens de forma determinística (regex/parser, sem LLM).
+
+        `paginas` é o texto por página. `pdf` (caminho) é opcional — só os parsers
+        que precisam de COORDENADAS (ex.: Alto, proforma 2-colunas) o usam; os de
+        texto ignoram."""
         ...
 
 

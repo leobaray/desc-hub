@@ -64,7 +64,7 @@ def processar_stream(
         yield ("erro", {"msg": "Nenhum parser reconheceu este invoice."})
         return
 
-    itens: list[ItemInvoice] = parser.extrair(paginas)
+    itens: list[ItemInvoice] = parser.extrair(paginas, pdf=pdf)
     if limite:
         itens = itens[:limite]
     templates = descricao_mod.carregar_templates()

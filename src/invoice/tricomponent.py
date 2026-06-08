@@ -26,30 +26,37 @@ class TricomponentParser:
     def detectar(self, texto: str) -> bool:
         return "tri component" in texto.lower()
 
-    def extrair(self, paginas: list[str]) -> list[ItemInvoice]:
+    def extrair(self, paginas: list[str], pdf=None) -> list[ItemInvoice]:
         itens: list[ItemInvoice] = []
         for n_pagina, texto in enumerate(paginas, 1):
             linhas = [ln.strip() for ln in texto.splitlines()]
             i = 0
-            while i + 6 < len(linhas):
+            while i + 5 < len(linhas):
                 if (
                     _INT.match(linhas[i])          # LN#
                     and _INT.match(linhas[i + 1])  # OrderQty
                     and _INT.match(linhas[i + 2])  # ShipQty
                     and _CODE.match(linhas[i + 3]) and len(linhas[i + 3]) >= 3  # PartID
-                    and _HTS.match(linhas[i + 4])  # HTS
-                    and _DEC.match(linhas[i + 5])  # weight
+                    and _HTS.match(linhas[i + 4])  # HTS_CODE / NCM Code (8 dígitos)
                 ):
+                    # i+5 é o peso (decimal) no layout novo; no antigo (coluna "NCM
+                    # Code", sem peso) i+5 já é a descrição.
+                    if _DEC.match(linhas[i + 5]):
+                        descricao = linhas[i + 6] if i + 6 < len(linhas) else ""
+                        avanco = 7
+                    else:
+                        descricao = linhas[i + 5]
+                        avanco = 6
                     itens.append(ItemInvoice(
                         codigo=linhas[i + 3],
                         qtd_shipped=int(linhas[i + 2]),
                         qtd_ordered=int(linhas[i + 1]),
                         hts=linhas[i + 4],
-                        descricao_invoice=linhas[i + 6],
+                        descricao_invoice=descricao,
                         marca="tricomponent",
                         pagina=n_pagina,
                     ))
-                    i += 7
+                    i += avanco
                 else:
                     i += 1
         return itens

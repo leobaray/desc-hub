@@ -23,12 +23,41 @@ from src.config import settings
 _CATALOGOS = [
     "catalogos/raybestos_rpt_2026.pdf",  # Raybestos — catálogo principal (ed. 05/2026)
     "catalogos/allomatic.pdf",           # Allomatic
-    # Os dois abaixo têm layout DIFERENTE do "Part No. | Description | ..." — o parser
+    # Os abaixo têm layout DIFERENTE do "Part No. | Description | ..." — o parser
     # atual lê os cabeçalhos de aplicação (ex.: "Ford 4R70W") como se fossem código.
-    # Pedem parser próprio; guardados pra futuro, FORA do índice:
+    # Guardados pra futuro, FORA do índice (pedem parser próprio):
     #   catalogos/raybestos_torque_converter.pdf  (componentes de conversor de torque)
     #   catalogos/raybestos_friction_specs.pdf    (dimensões: Thickness/Teeth/OD/ID)
+    #   catalogos/allomatic_filter_catalog.pdf    (filtros; o RPT já cobria 131/135,
+    #     só os 4 que faltavam entram via _FILTROS_EXTRA abaixo — sem parser completo)
 ]
+
+# Filtros do Allomatic Filter Catalog que o índice (RPT + Allomatic) ainda não tinha.
+# Dado extraído À MÃO da fonte (catalogos/allomatic_filter_catalog.pdf) — não é parsing,
+# são 4 registros pontuais. junta_ref = código da gaxeta (nitrile 22G, salvo a moldada).
+_FILTROS_EXTRA: dict[str, dict] = {
+    "515420": {"codigo": "515420", "categoria": "Filters", "descricao": "Filter",
+               "aplicacao": "VOLKSWAGEN / AUDI 010, 087, 089, 090 1977-1993",
+               "make": "VOLKSWAGEN / AUDI", "anos": "1977-1993",
+               "junta_ref": "04G420", "notes": "Round (gaxeta de borracha moldada)",
+               "oe": "010-325-421A",
+               "catalogo": "catalogos/allomatic_filter_catalog.pdf", "pagina": 72},
+    "515490": {"codigo": "515490", "categoria": "Filters", "descricao": "Filter",
+               "aplicacao": "CHRYSLER 45RFE, 545RFE, 65RFE, 66RFE, 68RFE (2WD, 4WD) 1999-ON",
+               "make": "CHRYSLER", "anos": "1999-ON", "junta_ref": "22G492",
+               "oe": "04799662AB, 05179267AC, 4799662, 4799662A, 4799662AB, 5179267AC",
+               "catalogo": "catalogos/allomatic_filter_catalog.pdf", "pagina": 9},
+    "515492": {"codigo": "515492", "categoria": "Filters", "descricao": "Filter",
+               "aplicacao": "CHRYSLER 65RFE, 66RFE (2WD), 68RFE (4WD)",
+               "make": "CHRYSLER", "junta_ref": "22G492", "parafusos": "15",
+               "oe": "05013470AA, 05013470AB, 05013470AC, 05013470AD, 05013470AE, 4799507",
+               "catalogo": "catalogos/allomatic_filter_catalog.pdf", "pagina": 9},
+    "515703": {"codigo": "515703", "categoria": "Filters", "descricao": "Filter",
+               "aplicacao": "GM 4L60E 1993-ON", "make": "GM", "anos": "1993-ON",
+               "junta_ref": "22G700", "parafusos": "16", "notes": "Auxiliary Pump Filter",
+               "oe": "24200796, 24208148, 24208835",
+               "catalogo": "catalogos/allomatic_filter_catalog.pdf", "pagina": 26},
+}
 _COLS = ("Part No.", "Description", "Thick", "Qty.", "Year", "Ref#", "OE#", "Notes")
 _CATEGORIAS = (
     "Modules", "Friction Plates", "Steel Plates", "Filters", "Bands", "Bushings",
@@ -171,6 +200,17 @@ def build_index() -> dict:
             if pno and pno % 80 == 0:
                 print(f"    ... {nome} pág {pno} | {len(registros)} códigos")
         doc.close()
+
+    # filtros pontuais do Allomatic Filter Catalog (ver _FILTROS_EXTRA): novo entra,
+    # existente só preenche campo vazio — mesma regra de merge dos catálogos.
+    for cod, rec in _FILTROS_EXTRA.items():
+        ex = registros.get(cod)
+        if ex is None:
+            registros[cod] = dict(rec)
+        else:
+            for k, v in rec.items():
+                if v and not ex.get(k):
+                    ex[k] = v
 
     _INDEX_PATH.parent.mkdir(parents=True, exist_ok=True)
     _INDEX_PATH.write_text(json.dumps(registros, ensure_ascii=False), encoding="utf-8")

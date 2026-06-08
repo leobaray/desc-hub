@@ -394,6 +394,70 @@ class AllomaticSpecs:
         )
 
 
+class SonnaxSpecs:
+    """Site da Sonnax (sonnax.com) — Rails. SEM catálogo: o site é a fonte.
+
+    Pesquisar o código em /search?query= faz **302 DIRETO** pra /parts/<id>-<slug>
+    quando o código existe; quando não existe, devolve **200** (página de resultados).
+    Então o próprio redirect já é o match exato — não precisa parsear cards.
+
+    A página de produto traz: nome + "Part No. <código>" no h1; as aplicações
+    (transmissões) no 1º h2; e uma descrição rica e pronta na meta description
+    (ex.: "Sonnax PTFE-impregnated pump bushing 104034A ... for GM 6L50, 6L80...").
+    Nossos códigos SÃO os part numbers da Sonnax (o h1 mostra o mesmo código).
+
+    Sem redirect pra /parts/ -> encontrado=False (revisão), nunca chute.
+    """
+
+    marca = "sonnax"
+    url_base = "https://www.sonnax.com"
+
+    def _get(self, url: str, params: dict | None = None, follow: bool = True):
+        return httpx.get(
+            url, params=params, timeout=settings.http_timeout,
+            follow_redirects=follow, headers={"User-Agent": _UA},
+        )
+
+    def buscar(self, item: ItemInvoice) -> SpecProduto:
+        try:
+            r = self._get(f"{self.url_base}/search", params={"query": item.codigo}, follow=False)
+        except Exception:
+            return SpecProduto(codigo=item.codigo, marca=self.marca, encontrado=False, fonte_url=self.url_base)
+
+        loc = r.headers.get("location", "") if 300 <= r.status_code < 400 else ""
+        if "/parts/" not in loc:  # 200 = sem match exato; redirect p/ outra coisa = ignora
+            return SpecProduto(codigo=item.codigo, marca=self.marca, encontrado=False, fonte_url=self.url_base)
+
+        url = loc if loc.startswith("http") else self.url_base + loc
+        try:
+            tree = HTMLParser(self._get(url).text)
+        except Exception:
+            return SpecProduto(codigo=item.codigo, marca=self.marca, encontrado=False, fonte_url=url)
+
+        h1 = _node_text(tree.css_first("h1"))
+        nome = re.split(r"\s*Part No\.?\s*", h1, maxsplit=1)[0].strip() if h1 else ""
+        md = tree.css_first("meta[name='description']")
+        descricao = (md.attributes.get("content") or "").strip() if md is not None else ""
+        aplicacao = _node_text(tree.css_first("h2"))
+
+        atributos = {
+            "titulo": nome,
+            "categoria": nome,          # tipo do produto (ex.: "Oversized Pump Bushing")
+            "aplicacao": aplicacao,     # transmissões (1º h2)
+            "descricao": descricao or aplicacao,
+            "codigo_site": item.codigo,
+        }
+        return SpecProduto(
+            codigo=item.codigo,
+            marca=self.marca,
+            encontrado=True,
+            fonte_url=url,
+            atributos={k: v for k, v in atributos.items() if v},
+            confianca="alta",  # o redirect da busca já é o match exato pelo código
+        )
+
+
 registrar_fonte(RaybestosSpecs())
 registrar_fonte(AllomaticSpecs())
-# Próximas marcas: sonnax, alto, psbearings, tricomponent.
+registrar_fonte(SonnaxSpecs())
+# Próximas marcas: alto, psbearings, tricomponent.

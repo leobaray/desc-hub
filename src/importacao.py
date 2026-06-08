@@ -144,14 +144,15 @@ def _eh_marca_generica(marca: str) -> bool:
     return marca.strip().upper() in _MARCAS_GENERICAS
 
 
-# Sigla do arquivo -> nome canônico do fabricante. As que o Leonardo confirmou.
-# TRICO e PSMFG ficam como vieram (expansão não confirmada).
+# Sigla do arquivo -> nome canônico do fabricante (confirmados pelo Leonardo).
 _MARCA_CANONICA = {
     "RAYBE": "Raybestos",
     "RAYBESTOS": "Raybestos",
     "ALLOM": "Allomatic",
     "SONNA": "Sonnax",
     "ALTO": "Alto",
+    "TRICO": "Tricomponent",
+    "PSMFG": "PS Bearings",
 }
 
 

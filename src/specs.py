@@ -313,5 +313,87 @@ class RaybestosSpecs:
         return descricao, _extrair_specs(tree)
 
 
+class AllomaticSpecs:
+    """Site da Allomatic (allomatic.com) — Webflow, mesma busca /search?query= do
+    Raybestos. Diferenças: os cards NÃO trazem título/alt (o código vem só no slug
+    da URL, ex.: /transmission-filters/515489), e a página de produto põe a
+    aplicação no h1 e as specs na tabela (Gasket Type / Pan Bolts / Material).
+
+    Casa SÓ por código (slug) — sem fallback por descrição (não há texto no card).
+    Nada conclusivo / rede caiu -> encontrado=False (revisão), nunca chute.
+    """
+
+    marca = "allomatic"
+    url_base = "https://www.allomatic.com"
+
+    # 1º segmento da URL -> categoria (alinha com as categorias do catálogo).
+    _CATEGORIAS = {
+        "transmission-filters": "Filters",
+        "friction-clutch-plates": "Friction Plates",
+        "steel-clutch-plates": "Steel Plates",
+        "bands": "Bands",
+        "sprags": "Sprags",
+    }
+
+    def _get(self, url: str, params: dict | None = None) -> str:
+        r = httpx.get(
+            url, params=params, timeout=settings.http_timeout,
+            follow_redirects=True, headers={"User-Agent": _UA},
+        )
+        r.raise_for_status()
+        return r.text
+
+    def _hrefs(self, query: str) -> list[str]:
+        """hrefs dos cards da busca (o código está no último segmento do slug)."""
+        tree = HTMLParser(self._get(f"{self.url_base}/search", params={"query": query}))
+        out: list[str] = []
+        vistos: set[str] = set()
+        for card in tree.css("div[class*='search-result-item']"):
+            link = card.css_first("a[class*='search-results-page-link']") or next(
+                (a for a in card.css("a") if a.attributes.get("href")), None
+            )
+            href = (link.attributes.get("href") if link else "") or ""
+            if href and href not in vistos:
+                vistos.add(href)
+                out.append(href)
+        return out
+
+    def buscar(self, item: ItemInvoice) -> SpecProduto:
+        alvo = _norm(item.codigo)
+        try:
+            hrefs = self._hrefs(item.codigo)
+        except Exception:
+            return SpecProduto(codigo=item.codigo, marca=self.marca, encontrado=False, fonte_url=self.url_base)
+
+        href = next((h for h in hrefs if _norm(_slug(h)) == alvo), None)
+        if href is None:
+            return SpecProduto(codigo=item.codigo, marca=self.marca, encontrado=False, fonte_url=self.url_base)
+
+        url = self.url_base + href if href.startswith("/") else href
+        categoria = self._CATEGORIAS.get(href.strip("/").split("/")[0], "")
+        try:
+            tree = HTMLParser(self._get(url))
+        except Exception:
+            return SpecProduto(codigo=item.codigo, marca=self.marca, encontrado=False, fonte_url=url)
+
+        aplicacao = _node_text(tree.css_first("h1"))
+        atributos = {
+            "aplicacao": aplicacao,
+            "descricao": aplicacao,
+            "categoria": categoria,
+            "codigo_site": _slug(href).upper(),
+            **_extrair_specs(tree),
+        }
+        return SpecProduto(
+            codigo=item.codigo,
+            marca=self.marca,
+            encontrado=True,
+            fonte_url=url,
+            atributos={k: v for k, v in atributos.items() if v},
+            confianca="alta",  # casou pelo código (slug)
+        )
+
+
 registrar_fonte(RaybestosSpecs())
-# Próximas marcas: allomatic, sonnax, alto, psbearings, tricomponent.
+registrar_fonte(AllomaticSpecs())
+# Próximas marcas: sonnax, alto, psbearings, tricomponent.

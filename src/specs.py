@@ -543,8 +543,124 @@ class TricomponentSpecs:
         )
 
 
+class PsBearingsSpecs:
+    """Site da PS Bearings (psbearings.com) — WordPress. Busca ?s=CODE devolve os
+    resultados em <article>; o título começa com o CÓDIGO + aplicação + tipo (ex.:
+    'PS9002 Renault DPO Torque Converter Sprag Clutch'). Casamos os artigos cujo 1º
+    token do título == nosso código EXATO (um código pode ter +1 aplicação -> junta).
+    Sem artigo com o código exato -> encontrado=False (nunca chute)."""
+
+    marca = "psbearings"
+    url_base = "https://www.psbearings.com"
+
+    def _get(self, url: str, params: dict | None = None) -> str:
+        r = httpx.get(url, params=params, timeout=settings.http_timeout,
+                      follow_redirects=True, headers={"User-Agent": _UA})
+        r.raise_for_status()
+        return r.text
+
+    def buscar(self, item: ItemInvoice) -> SpecProduto:
+        try:
+            tree = HTMLParser(self._get(self.url_base + "/", params={"s": item.codigo}))
+        except Exception:
+            return SpecProduto(codigo=item.codigo, marca=self.marca, encontrado=False, fonte_url=self.url_base)
+
+        alvo = _norm(item.codigo)
+        titulos: list[str] = []
+        fonte = ""
+        for ar in tree.css("article"):
+            head = ar.css_first("h1, h2, h3") or ar.css_first("a")
+            titulo = _node_text(head)
+            toks = titulo.split()
+            if not toks or _norm(toks[0]) != alvo:
+                continue
+            titulos.append(titulo[len(toks[0]):].strip(" -–:"))  # tira o código do início
+            if not fonte:
+                a = ar.css_first("a[href]")
+                fonte = (a.attributes.get("href") if a else "") or ""
+        if not titulos:
+            return SpecProduto(codigo=item.codigo, marca=self.marca, encontrado=False, fonte_url=self.url_base)
+
+        aplicacao = " ; ".join(dict.fromkeys(t for t in titulos if t))
+        atributos = {
+            "titulo": aplicacao,
+            "categoria": "Bearing",
+            "aplicacao": aplicacao,
+            "descricao": aplicacao,
+            "codigo_site": item.codigo,
+        }
+        return SpecProduto(
+            codigo=item.codigo, marca=self.marca, encontrado=True,
+            fonte_url=fonte or f"{self.url_base}/?s={item.codigo}",
+            atributos={k: v for k, v in atributos.items() if v}, confianca="alta",
+        )
+
+
+class AltoSpecs:
+    """Site da Alto (altousa.com). O part search é POST em /partsearch/ e EXIGE
+    sessão (cookie exp_csrf_token casado com o hidden XID) + Referer — senão 403.
+    O resultado traz 'Part Number', 'Part Type' e 'Title' (aplicação/descrição, ex.:
+    'FR ZF6HP26 TORQ CONV LANDROVER'). Casa só o bloco cujo Part Number == código
+    exato; senão -> encontrado=False."""
+
+    marca = "alto"
+    url_base = "https://www.altousa.com"
+
+    def buscar(self, item: ItemInvoice) -> SpecProduto:
+        try:
+            with httpx.Client(headers={"User-Agent": _UA}, timeout=settings.http_timeout,
+                              follow_redirects=True) as cli:
+                home = HTMLParser(cli.get(self.url_base + "/").text)
+                xid = next((i.attributes.get("value") or "" for i in home.css("input")
+                            if i.attributes.get("name") == "XID"), "")
+                r = cli.post(self.url_base + "/partsearch/",
+                             data={"partno": item.codigo, "XID": xid, "submit": "Search"},
+                             headers={"User-Agent": _UA, "Referer": self.url_base + "/"})
+            if r.status_code != 200:
+                return SpecProduto(codigo=item.codigo, marca=self.marca, encontrado=False, fonte_url=self.url_base)
+            texto = _node_text(HTMLParser(r.text).css_first("body"))
+        except Exception:
+            return SpecProduto(codigo=item.codigo, marca=self.marca, encontrado=False, fonte_url=self.url_base)
+
+        # acha o bloco do Part Number EXATO (a busca pode trazer vários)
+        bloco = next((seg for seg in re.split(r"Part Number:\s*", texto)[1:]
+                      if seg.split() and _norm(seg.split()[0]) == _norm(item.codigo)), None)
+        if bloco is None:
+            return SpecProduto(codigo=item.codigo, marca=self.marca, encontrado=False, fonte_url=self.url_base)
+
+        mt = re.search(r"Part Type:\s*(.+?)\s+(?:IMAGES|DOWNLOADS|ATTRIBUTES|Title:|$)", bloco)
+        tipo = mt.group(1).strip() if mt else ""
+        mtt = re.search(r"Title:\s*(.+?)\s+Alto\b", bloco)
+        titulo = mtt.group(1).strip() if mtt else ""
+        # Dimensões: o Alto traz IN e MM; pegamos SÓ o triplo em MM (OD x ID x esp.)
+        # + dentes. Nada de polegada. Tipos sem o triplo (ex.: Steel Clutch) ficam sem.
+        medidas = ""
+        mm = re.search(r"OD x ID x Thk MM:\s*([\d.]+)\s*x\s*([\d.]+)\s*x\s*([\d.]+)", bloco)
+        if mm:
+            vals = " x ".join(f"{float(mm.group(i)):.2f}".rstrip("0").rstrip(".") for i in (1, 2, 3))
+            medidas = f"{vals} mm (OD x ID x esp.)"
+        mte = re.search(r"\bTeeth:\s*(\d+)", bloco)
+        if mte:
+            medidas = (f"{medidas}; " if medidas else "") + f"{mte.group(1)} dentes"
+
+        atributos = {
+            "titulo": titulo,
+            "categoria": tipo,
+            "aplicacao": titulo,
+            "descricao": titulo or tipo,
+            "medidas": medidas,        # sempre em mm (ou vazio)
+            "codigo_site": item.codigo,
+        }
+        return SpecProduto(
+            codigo=item.codigo, marca=self.marca, encontrado=True,
+            fonte_url=self.url_base + "/partsearch/",
+            atributos={k: v for k, v in atributos.items() if v}, confianca="alta",
+        )
+
+
 registrar_fonte(RaybestosSpecs())
 registrar_fonte(AllomaticSpecs())
 registrar_fonte(SonnaxSpecs())
 registrar_fonte(TricomponentSpecs())
-# Próximas marcas: alto, psbearings.
+registrar_fonte(PsBearingsSpecs())
+registrar_fonte(AltoSpecs())

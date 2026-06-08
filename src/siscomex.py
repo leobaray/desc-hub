@@ -8,15 +8,14 @@ catálogo da empresa num JSON (dentro de um .zip). Cada produto traz:
   - denominacao    : o nome comercial
   - ncm, situacao, modalidade, versao, atributos*
 
-A gente cruza por codigoInterno e copia o oficial pro cadastro.
+A gente cruza por codigoInterno e copia SÓ o que interessa pro cadastro.
 
-Decidido com o Leonardo:
-  - cod_sisc, desc_sisc e descrição (denominação): o Siscomex MANDA (sobrescreve até
-    palpite do pipeline) — é o dado oficial registrado.
-  - NCM: NÃO é copiado. A classificação vem do trabalho de família->NCM da
-    contabilidade (e pode mudar até no próprio Siscomex).
+Decidido com o Leonardo (revisto depois de ver o resultado):
+  - SÓ o `cod_sisc` (código do produto no Siscomex) é copiado.
+  - `desc_sisc` NÃO vem daqui — é o que a IA compõe (campo do pipeline).
+  - descrição comercial NÃO vem da `denominacao` — é outro campo interno, pra depois.
+  - NCM NÃO é copiado — vem do trabalho de família->NCM da contabilidade.
   - Conflito (mesmo código nosso -> 2 produtos Siscomex): pulado e reportado.
-  - atributos (ATT_xxxx): ficam pra um 2º passo (precisam do dicionário de atributos).
 
 (O fluxo de API — autenticar/exportar/incluir via certificado — entra aqui depois.)
 
@@ -31,8 +30,6 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 from src import produto as produto_mod
-
-FONTE = "siscomex"
 
 
 def carregar_export(origem: str | Path | bytes) -> list[dict]:
@@ -107,15 +104,9 @@ def importar_export(origem: str | Path | bytes) -> dict:
         cod_sisc = str(s.get("codigo") or "").strip()
         if cod_sisc:
             campos["cod_sisc"] = cod_sisc
-        desc = (s.get("descricao") or "").strip()
-        if desc:
-            campos["desc_sisc"] = desc          # descrição DUIMP oficial (Siscomex manda)
-        denom = (s.get("denominacao") or "").strip()
-        if denom:
-            campos["descricao"] = denom         # nome comercial
-        # NCM: deliberadamente NÃO copiado.
+        # SÓ cod_sisc. desc_sisc é o que a IA faz; a descrição comercial é outro
+        # campo (vem depois); NCM vem do família->NCM. Nada disso vem do Siscomex.
         if campos:
-            campos["fonte_url"] = FONTE
             produto_mod.atualizar_campos(alvo, campos)
             atualizados += 1
             for k in campos:

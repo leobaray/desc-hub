@@ -103,7 +103,6 @@ function passaFiltro(p) {
 
 /* ===================== render da tabela ===================== */
 function chipFonte(f) {
-  if (f === "siscomex") return `<span class="chip sisc">siscomex</span>`;
   if (f && f.startsWith("http")) return `<span class="chip site">site</span>`;
   if (f && f.startsWith("catálogo")) return `<span class="chip cat">catálogo</span>`;
   return `<span class="chip none">—</span>`;

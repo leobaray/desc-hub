@@ -20,7 +20,15 @@ from pathlib import Path
 
 from src.config import settings
 
-_CATALOGOS = ["raybestos_catalog.pdf", "allomatic_catalog.pdf"]
+_CATALOGOS = [
+    "catalogos/raybestos_rpt_2026.pdf",  # Raybestos — catálogo principal (ed. 05/2026)
+    "catalogos/allomatic.pdf",           # Allomatic
+    # Os dois abaixo têm layout DIFERENTE do "Part No. | Description | ..." — o parser
+    # atual lê os cabeçalhos de aplicação (ex.: "Ford 4R70W") como se fossem código.
+    # Pedem parser próprio; guardados pra futuro, FORA do índice:
+    #   catalogos/raybestos_torque_converter.pdf  (componentes de conversor de torque)
+    #   catalogos/raybestos_friction_specs.pdf    (dimensões: Thickness/Teeth/OD/ID)
+]
 _COLS = ("Part No.", "Description", "Thick", "Qty.", "Year", "Ref#", "OE#", "Notes")
 _CATEGORIAS = (
     "Modules", "Friction Plates", "Steel Plates", "Filters", "Bands", "Bushings",
@@ -186,7 +194,11 @@ _ALIASES = {"RCP96-283": "RHT96-283"}
 def buscar_no_catalogo(codigo: str) -> dict | None:
     idx = carregar_index()
     alvo = _ALIASES.get(codigo) or _ALIASES.get(codigo.upper()) or codigo
-    return idx.get(alvo) or idx.get(alvo.upper())
+    rec = idx.get(alvo) or idx.get(alvo.upper())
+    if rec is None and alvo.isdigit():
+        # tolera zero à esquerda: cadastro '016699' <-> catálogo '16699'
+        rec = idx.get(alvo.lstrip("0")) or idx.get(alvo.zfill(6))
+    return rec
 
 
 if __name__ == "__main__":

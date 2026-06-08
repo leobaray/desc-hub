@@ -95,6 +95,7 @@ async function carregar() {
 
 function passaFiltro(p) {
   if ($("#filtro-inc").checked && !p.incompleto) return false;
+  if ($("#filtro-sel").checked && !selecionados.has(p.codigo)) return false;
   const q = $("#busca").value.trim().toLowerCase();
   if (q && !(`${p.codigo} ${p.desc_sisc} ${p.aplicacoes} ${p.descricao}`.toLowerCase().includes(q))) return false;
   return true;
@@ -102,6 +103,7 @@ function passaFiltro(p) {
 
 /* ===================== render da tabela ===================== */
 function chipFonte(f) {
+  if (f === "siscomex") return `<span class="chip sisc">siscomex</span>`;
   if (f && f.startsWith("http")) return `<span class="chip site">site</span>`;
   if (f && f.startsWith("catálogo")) return `<span class="chip cat">catálogo</span>`;
   return `<span class="chip none">—</span>`;
@@ -137,7 +139,7 @@ function render() {
   const vazio = $("#vazio-filtro");
   if (vista.length === 0) {
     vazio.textContent = linhas.length === 0
-      ? "Cadastro vazio. Processe um invoice, importe uma planilha ou adicione um código."
+      ? "Cadastro vazio. Processe um invoice ou adicione um código."
       : "Nenhum produto bate com o filtro.";
     vazio.hidden = false;
   } else { vazio.hidden = true; }
@@ -184,10 +186,14 @@ $("#tbody").addEventListener("change", (e) => {
   if (!cb) return;
   const cod = cb.dataset.sel;
   if (cb.checked) selecionados.add(cod); else selecionados.delete(cod);
-  const tr = cb.closest("tr");
-  if (tr) tr.classList.toggle("sel", cb.checked);
   atualizarExportBtn();
-  sincronizarCheckAll();
+  if ($("#filtro-sel").checked) {
+    render();                                  // "só selecionados": a linha some/aparece na hora
+  } else {
+    const tr = cb.closest("tr");
+    if (tr) tr.classList.toggle("sel", cb.checked);
+    sincronizarCheckAll();
+  }
 });
 $("#check-all").addEventListener("change", (e) => {
   for (const p of vista) {
@@ -198,6 +204,7 @@ $("#check-all").addEventListener("change", (e) => {
 });
 $("#busca").addEventListener("input", render);
 $("#filtro-inc").addEventListener("change", render);
+$("#filtro-sel").addEventListener("change", render);
 
 /* ===================== ficha do produto ===================== */
 function construirForm(p) {
@@ -472,23 +479,6 @@ $("#pad-go").addEventListener("click", async () => {
   finally { btn.disabled = false; btn.textContent = rotulo; }
 });
 
-/* ===================== importar planilha ===================== */
-$("#btn-importar").addEventListener("click", () => $("#file-importar").click());
-$("#file-importar").addEventListener("change", async () => {
-  const f = $("#file-importar").files[0];
-  if (!f) return;
-  setStatus("running", "importando");
-  const fd = new FormData(); fd.append("file", f);
-  try {
-    const r = await fetch("/api/importar", { method: "POST", body: fd });
-    const j = await r.json();
-    if (!r.ok || j.erro) throw new Error(j.erro || ("HTTP " + r.status));
-    await carregar();
-    toast(`Importado: ${j.criados} novo(s), ${j.atualizados} atualizado(s)`, "ok");
-  } catch (err) { setStatus("err", "erro"); toast("Erro ao importar: " + err.message, "err"); }
-  finally { $("#file-importar").value = ""; }
-});
-
 /* ===================== processar invoice ===================== */
 const dz = $("#dropzone"), fileInv = $("#file");
 $("#btn-invoice").addEventListener("click", () => {
@@ -541,6 +531,7 @@ $("#inv-processar").addEventListener("click", async () => {
     await carregar();
     selecionados.clear();
     processados.forEach((c) => selecionados.add(c));
+    if (processados.length) $("#filtro-sel").checked = true;  // isola os achados na visualização
     render(); atualizarExportBtn();
     $("#modal-invoice").hidden = true;
     setStatus("ok", `cadastro · ${linhas.length}`);

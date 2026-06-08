@@ -38,6 +38,7 @@
         <input class="search" id="busca" placeholder="filtrar por código, descrição, aplicação…" autocomplete="off">
       </div>
       <label class="check"><input type="checkbox" id="filtro-inc"> só incompletos</label>
+      <label class="check"><input type="checkbox" id="filtro-sel"> só selecionados</label>
       <span class="sel-info" id="sel-info" hidden></span>
       <span class="toolbar-spacer"></span>
       <form class="add-form" id="add-form" hidden>
@@ -45,9 +46,7 @@
         <button class="btn-primary sm" id="add-go" type="submit">buscar</button>
       </form>
       <button class="btn-ghost sm" id="add-toggle">+ código</button>
-      <button class="btn-ghost sm" id="btn-importar">Importar planilha</button>
       <button class="btn-ghost sm" id="btn-invoice">Processar invoice</button>
-      <input type="file" id="file-importar" accept=".xlsx" hidden>
     </div>
 
     <div class="table-wrap">

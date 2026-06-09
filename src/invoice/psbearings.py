@@ -25,7 +25,7 @@ class PsBearingsParser:
         t = texto.lower()
         return "ps bearings mfg" in t or "psbearings.com" in t
 
-    def extrair(self, paginas: list[str]) -> list[ItemInvoice]:
+    def extrair(self, paginas: list[str], pdf=None) -> list[ItemInvoice]:
         itens: list[ItemInvoice] = []
         for n_pagina, texto in enumerate(paginas, 1):
             linhas = [ln.strip() for ln in texto.splitlines()]

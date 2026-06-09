@@ -28,7 +28,7 @@ class SonnaxParser:
     def detectar(self, texto: str) -> bool:
         return "sonnax" in texto.lower()
 
-    def extrair(self, paginas: list[str]) -> list[ItemInvoice]:
+    def extrair(self, paginas: list[str], pdf=None) -> list[ItemInvoice]:
         itens: list[ItemInvoice] = []
         for n_pagina, texto in enumerate(paginas, 1):
             linhas = [ln.strip() for ln in texto.splitlines()]

@@ -2,7 +2,7 @@
 tipo: jogo_discos_aco
 nome: Jogo de discos de aço
 prioridade: 20
-ncm_sugerida: "8708.99.90"   # a confirmar com despachante
+ncm_sugerida: "87084090"   # contabilidade aba CORREÇÃO: 87089300 foi extinto e remanejado p/ 87084090 (rev. 2026-06-15)
 
 gatilhos:
   - steel module

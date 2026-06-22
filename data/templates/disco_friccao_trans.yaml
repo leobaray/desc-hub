@@ -6,7 +6,7 @@
 tipo: disco_friccao_trans
 nome: Disco de fricção (transmissão)
 prioridade: 12
-ncm_sugerida: "8708.99.90"   # a confirmar com despachante
+ncm_sugerida: "68138910"   # confirmado: contabilidade, aba CORREÇÃO 2026-06 (família "Disco de aço revestido por composite")
 
 gatilhos:
   - friction plates

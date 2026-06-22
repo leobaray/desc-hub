@@ -1,0 +1,21 @@
+# Família: rolamento axial de agulha (thrust needle bearing). Maior família
+# nova da aba CORREÇÃO (99 itens; prefixos RTX, GM, TO, PS, CH, AW — genéricos
+# demais pra gatilho cod:). Gatilhos a calibrar com invoices reais.
+# Exceções já verificadas pela contabilidade DENTRO da família (NCM individual
+# no cadastro, não muda o template): FD-N-6 e RTX10020 -> 84834000.
+tipo: rolamento_axial_agulha
+nome: Rolamento axial de agulha
+prioridade: 8
+ncm_sugerida: "84824000"   # confirmado: contabilidade, aba CORREÇÃO 2026-06 (família "Rolamento axial de agulha")
+
+gatilhos:
+  - thrust bearing
+  - needle bearing
+  - thrust washer bearing
+  - torrington
+
+denominacao: "Rolamento axial de agulha {codigo} para transmissão automática"
+
+detalhamento_instrucoes: >
+  Cite o código, a aplicação (transmissão/conversor) e, se houver, dimensões.
+  Linguagem técnica e objetiva. Não inclua número OE.

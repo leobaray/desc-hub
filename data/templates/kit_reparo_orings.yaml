@@ -1,0 +1,19 @@
+# Família: kit de reparo com O-rings (Sonnax "ZIP Kit"). Família nova na aba
+# CORREÇÃO (rev. 2026-06-15): 11 itens, todos Sonnax, código termina em -ZIP
+# (exceto SC-48RE). Mesmo NCM da válvula (84812090), mas sem colisão de gatilho.
+tipo: kit_reparo_orings
+nome: Kit de reparo com O-rings
+prioridade: 8
+ncm_sugerida: "84812090"   # confirmado: contabilidade, aba CORREÇÃO 2026-06 (família "Kit de reparo com O-rings")
+
+gatilhos:
+  - zip kit
+  - zip de reparo
+  - o-ring kit
+
+denominacao: "Kit de reparo com O-rings {codigo} para transmissão automática"
+
+detalhamento_instrucoes: >
+  Cite o código, a aplicação (transmissão/modelo) e, quando confirmado, que o kit
+  é composto por O-rings/vedações de reparo. Linguagem técnica e objetiva. Não
+  inclua número OE nem nome comercial em inglês.

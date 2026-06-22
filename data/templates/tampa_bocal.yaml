@@ -1,0 +1,18 @@
+# Família: tampa do bocal (7 itens na aba CORREÇÃO; códigos MI-*/MHC-* — só
+# esta família usa esses prefixos). Gatilhos de texto a calibrar com invoices
+# reais. Há também "Tampa para prisioneiro" (2 itens, mesmo NCM) sem template —
+# criar quando aparecer em invoice.
+tipo: tampa_bocal
+nome: Tampa do bocal
+prioridade: 8
+ncm_sugerida: "39269090"   # confirmado: contabilidade, aba CORREÇÃO 2026-06 (família "Tampa do bocal")
+
+gatilhos:
+  - "cod:MI-"
+  - "cod:MHC"
+
+denominacao: "Tampa do bocal {codigo} para transmissão automática"
+
+detalhamento_instrucoes: >
+  Cite o código, o material (plástico, quando confirmado) e a aplicação.
+  Linguagem técnica e objetiva. Não inclua número OE.

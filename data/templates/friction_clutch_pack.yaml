@@ -2,7 +2,7 @@
 tipo: friction_clutch_pack
 nome: Kit de discos de fricção
 prioridade: 18
-ncm_sugerida: "8708.99.90"   # a confirmar com despachante
+ncm_sugerida: "68138910"   # confirmado: contabilidade, aba CORREÇÃO 2026-06 (família "Jogo de discos de aço revestido por composite")
 
 gatilhos:
   - friction clutch pack

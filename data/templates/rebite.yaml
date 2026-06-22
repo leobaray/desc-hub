@@ -1,0 +1,16 @@
+# Família: rebite (51 itens na aba CORREÇÃO; prefixos TX/GM/FD/SX/TO/CH —
+# genéricos demais pra gatilho cod:).
+tipo: rebite
+nome: Rebite
+prioridade: 8
+ncm_sugerida: "73182300"   # confirmado: contabilidade, aba CORREÇÃO 2026-06 (família "Rebite")
+
+gatilhos:
+  - rivet
+  - rebite
+
+denominacao: "Rebite {codigo} para transmissão automática"
+
+detalhamento_instrucoes: >
+  Cite o código, o uso (fixação de material de fricção/cinta, quando confirmado)
+  e a aplicação. Linguagem técnica e objetiva. Não inclua número OE.

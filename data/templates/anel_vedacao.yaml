@@ -3,7 +3,7 @@
 tipo: anel_vedacao
 nome: Anel de vedação
 prioridade: 5
-ncm_sugerida: "8484.20.00"   # a confirmar com despachante
+ncm_sugerida: "40169300"   # confirmado: contabilidade, aba CORREÇÃO 2026-06 (família "Retentor")
 
 gatilhos:
   - o-ring

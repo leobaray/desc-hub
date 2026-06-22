@@ -3,7 +3,7 @@
 tipo: filtro
 nome: Filtro de transmissão automática
 prioridade: 25
-ncm_sugerida: "8708.93.90"   # a confirmar com despachante
+ncm_sugerida: "84212990"   # confirmado: contabilidade, aba CORREÇÃO 2026-06 (famílias "Filtro hidráulico" / "com junta")
 
 gatilhos:
   - filter

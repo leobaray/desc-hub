@@ -1,0 +1,17 @@
+# Família: mola (13 itens na aba CORREÇÃO). "spring" solto aparece DENTRO da
+# composição de kits de válvula (valvula, prioridade 8) — por isso prioridade
+# menor: kit ganha, mola avulsa sobra pra cá.
+tipo: mola
+nome: Mola
+prioridade: 4
+ncm_sugerida: "73201000"   # confirmado: contabilidade, aba CORREÇÃO 2026-06 (família "Mola")
+
+gatilhos:
+  - spring
+  - mola
+
+denominacao: "Mola {codigo} para transmissão automática"
+
+detalhamento_instrucoes: >
+  Cite o código, o tipo (compressão/retorno, quando confirmado) e a aplicação.
+  Linguagem técnica e objetiva. Não inclua número OE.

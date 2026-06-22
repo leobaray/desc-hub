@@ -3,7 +3,8 @@
 tipo: kit_completo
 nome: Jogo completo (aço + fricção)
 prioridade: 30
-ncm_sugerida: "8708.99.90"   # a confirmar com despachante
+ncm_sugerida: "68138910"   # contabilidade aba CORREÇÃO (rev. 2026-06-15): família "Kit discos aço/revestido" virou 68138910;
+                           # os RCPTK-* (gatilho deste template) foram p/ 68138910. Outliers ficam por código no cadastro.
 
 gatilhos:
   - torqkit

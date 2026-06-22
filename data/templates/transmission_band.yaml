@@ -2,7 +2,7 @@
 tipo: transmission_band
 nome: Cinta de freio
 prioridade: 25
-ncm_sugerida: "8708.99.90"   # a confirmar com despachante
+ncm_sugerida: "68138990"   # confirmado: contabilidade, aba CORREÇÃO 2026-06 (família "Cinta para transmissão")
 
 gatilhos:
   - "band"

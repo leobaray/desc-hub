@@ -1,0 +1,17 @@
+# Família: kit de ferramentas (22 itens na aba CORREÇÃO; quase todos código
+# F-* — Sonnax tool kits). cod:F- é ancorado e específico (FD-/FS-/FC- não casam).
+tipo: kit_ferramentas
+nome: Kit de ferramentas
+prioridade: 8
+ncm_sugerida: "82075090"   # confirmado: contabilidade, aba CORREÇÃO 2026-06 (família "Kit de ferramentas")
+
+gatilhos:
+  - tool kit
+  - "cod:F-"
+
+denominacao: "Kit de ferramentas {codigo} para retífica de transmissão automática"
+
+detalhamento_instrucoes: >
+  Cite o código, a finalidade (usinagem/instalação de qual componente, quando
+  confirmada) e a transmissão alvo. Linguagem técnica e objetiva. Não inclua
+  número OE nem nome comercial em inglês.

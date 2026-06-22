@@ -1,0 +1,17 @@
+# Família: rolamento radial (de esferas). 19 itens na aba CORREÇÃO (códigos
+# numéricos 332*/323*/333*/343* — sem gatilho cod: pra não colidir com outras
+# famílias numéricas). Gatilhos a calibrar com invoices reais.
+tipo: rolamento_radial
+nome: Rolamento radial
+prioridade: 8
+ncm_sugerida: "84825010"   # confirmado: contabilidade, aba CORREÇÃO 2026-06 (família "Rolamento radial")
+
+gatilhos:
+  - ball bearing
+  - radial bearing
+
+denominacao: "Rolamento radial {codigo} para transmissão automática"
+
+detalhamento_instrucoes: >
+  Cite o código, a aplicação (transmissão/conversor) e, se houver, dimensões.
+  Linguagem técnica e objetiva. Não inclua número OE.

@@ -6,7 +6,7 @@
 tipo: disco_friccao
 nome: Disco de fricção
 prioridade: 15
-ncm_sugerida: "8708.99.90"   # a confirmar com despachante
+ncm_sugerida: "68138910"   # confirmado: contabilidade, aba CORREÇÃO 2026-06 (família "Composite")
 
 gatilhos:
   - "cod:R44"

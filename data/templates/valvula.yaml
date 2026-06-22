@@ -1,0 +1,21 @@
+# Família: válvulas e kits de válvula (Sonnax: reguladora, impulsora,
+# controladora, moduladora, acumuladora, superdimensionada...). A contabilidade
+# usa famílias separadas por função, mas TODAS com o mesmo NCM — um template só.
+# Gatilhos a calibrar com invoices reais (criado a partir da aba CORREÇÃO, sem
+# texto de invoice desta família em mãos).
+tipo: valvula
+nome: Válvula / kit de válvula
+prioridade: 8
+ncm_sugerida: "84812090"   # confirmado: contabilidade, aba CORREÇÃO 2026-06 (famílias "Válvula" e "Kit para/de válvula …")
+
+gatilhos:
+  - valve kit
+  - valve
+
+denominacao: "Kit de válvula {codigo} para transmissão automática"
+
+detalhamento_instrucoes: >
+  Use "Válvula" ou "Kit de válvula" conforme os dados (kit quando houver mais de
+  um componente). Cite o código, a função quando confirmada (reguladora de
+  pressão, etc.) e a aplicação (transmissão/conversor). Não inclua número OE nem
+  nome comercial em inglês.

@@ -1,0 +1,16 @@
+# Família: rolete de rolamento (6 itens na aba CORREÇÃO; prefixos GM/FD).
+# ATENÇÃO: "roller" solto é perigoso — "roller clutch" é roda livre (sprag,
+# prioridade 8 ganha). Por isso prioridade BAIXA: só pega o que nada melhor pegou.
+tipo: rolete_rolamento
+nome: Rolete de rolamento
+prioridade: 3
+ncm_sugerida: "84829120"   # confirmado: contabilidade, aba CORREÇÃO 2026-06 (família "Rolete de rolamento")
+
+gatilhos:
+  - roller
+
+denominacao: "Rolete de rolamento {codigo} para transmissão automática"
+
+detalhamento_instrucoes: >
+  Cite o código, a aplicação e, se houver, dimensões e quantidade. Linguagem
+  técnica e objetiva. Não inclua número OE.

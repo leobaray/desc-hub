@@ -1,0 +1,17 @@
+# Família: disco de aço AVULSO (511* Raybestos, ZF*). Diferente de
+# jogo_discos_aco (kit/módulo, prioridade 20 — ganha quando o item é jogo) e de
+# disco_friccao_trans (512*, revestido). Prioridade 10: abaixo dos dois.
+tipo: disco_aco
+nome: Disco de aço
+prioridade: 10
+ncm_sugerida: "87084090"   # contabilidade aba CORREÇÃO: 87089300 foi extinto e remanejado p/ 87084090 (rev. 2026-06-15)
+
+gatilhos:
+  - "cod:511"
+  - steel plate
+
+denominacao: "Disco de aço {codigo} para transmissão automática"
+
+detalhamento_instrucoes: >
+  Cite o código, a aplicação e, se houver, dimensões. Linguagem técnica e
+  objetiva. Não inclua número OE.

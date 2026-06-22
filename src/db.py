@@ -80,6 +80,19 @@ CREATE TABLE IF NOT EXISTS configuracoes (
     valor TEXT NOT NULL DEFAULT ''
 );
 
+-- Tabela de preços dos conversores de torque (área separada do cadastro DUIMP).
+-- TEXT nos valores de propósito: a planilha de origem mistura moeda com texto livre
+-- ("2.800 / FREE 3.500", "Amarok 4.000,00") e isso não pode ser perdido.
+CREATE TABLE IF NOT EXISTS conversor (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    modelo         TEXT NOT NULL,          -- modelo da transmissão (ex.: 6L80, ZF8HP45)
+    preco_de       TEXT NOT NULL DEFAULT '',
+    preco_ate      TEXT NOT NULL DEFAULT '',
+    venda_impostos TEXT NOT NULL DEFAULT '',
+    anotacoes      TEXT NOT NULL DEFAULT '',
+    atualizado_em  TEXT NOT NULL DEFAULT ''
+);
+
 CREATE INDEX IF NOT EXISTS idx_produto_fabricante ON produto(fabricante);
 """
 

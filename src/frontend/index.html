@@ -11,20 +11,24 @@
 <body>
   <header class="topbar">
     <div class="brand"><span class="logo" aria-hidden="true"></span>LBWMA<span class="brand-sub">Cadastro · DUIMP</span></div>
+    <nav class="nav-tabs" aria-label="Áreas">
+      <button class="nav-tab active" data-view="cadastro">Cadastro</button>
+      <button class="nav-tab" data-view="conversores">Conversores</button>
+    </nav>
     <div class="actions">
       <span class="badge idle" id="status">pronto</span>
-      <label class="toggle" title="Redige a descrição com IA ao buscar/processar; depois fica salva">
+      <label class="toggle so-cadastro" title="Redige a descrição com IA ao buscar/processar; depois fica salva">
         <input type="checkbox" id="ia">
         <span class="toggle-track" aria-hidden="true"><span class="toggle-knob"></span></span>
         <span class="toggle-label">IA</span>
       </label>
-      <button class="btn-ghost" id="abrir-padroes">Padrões</button>
-      <button class="btn-ghost" id="abrir-planilhas">Planilhas</button>
-      <button class="btn-primary" id="exportar" disabled>Exportar (0)</button>
+      <button class="btn-ghost so-cadastro" id="abrir-padroes">Padrões</button>
+      <button class="btn-ghost so-cadastro" id="abrir-planilhas">Planilhas</button>
+      <button class="btn-primary so-cadastro" id="exportar" disabled>Exportar (0)</button>
     </div>
   </header>
 
-  <main class="content">
+  <main class="content" id="view-cadastro">
     <div class="metrics-row">
       <div class="metric-card"><div class="metric-label">Produtos no cadastro</div><div class="metric-value" id="c-total">0</div></div>
       <div class="metric-card"><div class="metric-label">Completos</div><div class="metric-value green" id="c-ok">0</div></div>
@@ -67,6 +71,80 @@
       <p class="vazio-filtro" id="vazio-filtro" hidden></p>
     </div>
   </main>
+
+  <!-- ===================== Área: preços dos conversores ===================== -->
+  <main class="content" id="view-conversores" hidden>
+    <div class="conv-hero">
+      <h1 class="conv-titulo">Preços dos conversores</h1>
+      <p class="conv-sub">Tabela de reparo e venda por modelo de transmissão. Clique numa linha pra editar qualquer campo.</p>
+      <div class="search-wrap conv-search">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input class="search" id="conv-busca" placeholder="buscar modelo… (ex.: 6L80, zf8hp, RAM diesel)" autocomplete="off" spellcheck="false">
+      </div>
+    </div>
+    <div class="toolbar">
+      <span class="conv-count" id="conv-count"></span>
+      <span class="toolbar-spacer"></span>
+      <button class="btn-primary sm" id="conv-add">+ modelo</button>
+    </div>
+    <div class="table-wrap conv-wrap">
+      <table class="table conv-table">
+        <thead>
+          <tr>
+            <th>Modelo da transmissão</th>
+            <th class="col-conv-preco">Reparo · de</th>
+            <th class="col-conv-preco">Reparo · até</th>
+            <th class="col-conv-venda">Venda + impostos</th>
+            <th>Anotações</th>
+          </tr>
+        </thead>
+        <tbody id="conv-tbody"></tbody>
+      </table>
+      <p class="vazio-filtro" id="conv-vazio" hidden></p>
+    </div>
+  </main>
+
+  <!-- ===================== Modal: conversor ===================== -->
+  <div class="modal" id="modal-conv" hidden>
+    <div class="modal-backdrop" data-close-conv></div>
+    <div class="modal-card modal-sm" role="dialog" aria-modal="true" aria-labelledby="conv-m-titulo">
+      <div class="modal-head">
+        <div class="modal-head-l"><span class="m-cod" style="font-size:15px" id="conv-m-titulo">Conversor</span></div>
+        <div class="modal-head-actions"><button class="icon-btn" data-close-conv title="Fechar (Esc)">✕</button></div>
+      </div>
+      <div class="modal-body">
+        <div class="m-field">
+          <label class="m-label" for="conv-f-modelo">Modelo da transmissão</label>
+          <input class="inp mono" id="conv-f-modelo" placeholder="ex.: 6L80, ZF8HP45, 48RE/A618…" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="conv-grid-2" style="margin-top:14px">
+          <div class="m-field">
+            <label class="m-label" for="conv-f-de">Reparo · de</label>
+            <input class="inp mono" id="conv-f-de" placeholder="ex.: R$ 850,00" autocomplete="off">
+          </div>
+          <div class="m-field">
+            <label class="m-label" for="conv-f-ate">Reparo · até</label>
+            <input class="inp mono" id="conv-f-ate" placeholder="ex.: R$ 1.650,00" autocomplete="off">
+          </div>
+        </div>
+        <div class="m-field" style="margin-top:14px">
+          <label class="m-label" for="conv-f-venda">Venda + impostos</label>
+          <textarea class="inp mono conv-ta" id="conv-f-venda" rows="2" placeholder="ex.: R$ 2.500,00 — ou texto livre (por código, por carro…)" spellcheck="false"></textarea>
+        </div>
+        <div class="m-field" style="margin-top:14px">
+          <label class="m-label" for="conv-f-anot">Anotações</label>
+          <textarea class="inp conv-ta" id="conv-f-anot" rows="3" placeholder="avisos pro vendedor: mensagem, reparo, qual carro…" spellcheck="false"></textarea>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn-ghost danger" id="conv-m-apagar" hidden>Apagar</button>
+        <span class="m-hint" id="conv-m-msg"></span>
+        <span class="toolbar-spacer"></span>
+        <span class="m-hint">Ctrl+Enter salva · Esc fecha</span>
+        <button class="btn-primary" id="conv-m-salvar">Salvar</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ===================== Modal: ficha do produto ===================== -->
   <div class="modal" id="modal" hidden>
@@ -212,6 +290,29 @@
         <span class="toolbar-spacer"></span>
         <button class="btn-ghost" data-close-invoice>Fechar</button>
         <button class="btn-primary" id="inv-processar" disabled>Processar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== Modal: senha (cadastro / alterar conversores) ===================== -->
+  <div class="modal" id="modal-senha" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-card modal-sm" role="dialog" aria-modal="true" aria-labelledby="senha-titulo">
+      <div class="modal-head">
+        <div class="modal-head-l"><span class="m-cod" style="font-size:15px" id="senha-titulo">Acesso ao cadastro</span></div>
+      </div>
+      <div class="modal-body">
+        <p class="m-hint" style="margin:0 0 14px" id="senha-hint">O cadastro (DUIMP, planilhas, padrões) é restrito. A senha vale até o fim do dia — amanhã ela é pedida de novo.</p>
+        <div class="m-field">
+          <label class="m-label" for="senha-input">Senha</label>
+          <input class="inp" type="password" id="senha-input" autocomplete="current-password">
+        </div>
+      </div>
+      <div class="modal-foot">
+        <span class="m-hint" id="senha-msg"></span>
+        <span class="toolbar-spacer"></span>
+        <button class="btn-ghost" id="senha-cancelar">Voltar aos conversores</button>
+        <button class="btn-primary" id="senha-entrar">Entrar</button>
       </div>
     </div>
   </div>

@@ -320,6 +320,55 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 .pi-tipo.duimp { color: var(--accent); background: #62b4ff1a; border: 1px solid #62b4ff33; }
 .pi-tipo.completa { color: var(--green); background: #43d6931a; border: 1px solid #43d69333; }
 
+/* ============================================================ Nav (áreas) */
+/* Centralizada de forma absoluta: as abas ficam SEMPRE no mesmo lugar,
+   independente de quais botões de ação aparecem à direita em cada área. */
+.nav-tabs {
+  display: flex; align-items: center; gap: 4px;
+  position: absolute; left: 50%; transform: translateX(-50%);
+  background: var(--bg); border: 1px solid var(--border); border-radius: 9px; padding: 3px;
+}
+.nav-tab {
+  background: transparent; border-color: transparent; color: var(--text-dim);
+  font-size: 13px; font-weight: 600; padding: 6px 16px; border-radius: 7px; letter-spacing: .01em;
+}
+.nav-tab:hover:not(.active) { color: var(--text); }
+.nav-tab.active { background: var(--bg-elev-3); color: var(--text); }
+body.em-conversores .so-cadastro { display: none !important; }
+
+/* ============================================================ Conversores */
+.conv-hero { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 26px 0 22px; text-align: center; }
+.conv-titulo { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -.01em; }
+.conv-sub { margin: 0 0 14px; font-size: 13px; color: var(--text-dim); }
+.conv-search { width: min(620px, 100%); height: 46px; border-radius: 12px; }
+.conv-search .search { font-size: 15.5px; }
+.conv-search:focus-within { border-color: var(--accent); box-shadow: 0 0 0 4px #2f74ad2e; }
+.conv-count { font-size: 12.5px; color: var(--text-dim); font-family: var(--mono); }
+.conv-count b { color: var(--accent); }
+
+.conv-wrap { max-height: calc(100vh - 320px); }
+.conv-table .col-conv-preco { width: 130px; }
+.conv-table .col-conv-venda { width: 190px; }
+.cell-conv-mod { font-family: var(--mono); font-weight: 650; font-size: 14.5px; white-space: nowrap; }
+.cell-conv-mod .conv-mod-extra { display: block; font-family: inherit; font-weight: 500; font-size: 11.5px; color: var(--text-dim); white-space: normal; }
+.cell-conv-preco { font-family: var(--mono); font-size: 13px; color: var(--text-dim); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.cell-conv-venda { font-family: var(--mono); font-size: 13px; color: var(--green); white-space: pre-line; font-variant-numeric: tabular-nums; }
+.cell-conv-anot { font-size: 12.5px; color: var(--yellow); white-space: pre-line; max-width: 380px; }
+.conv-dim { color: var(--text-mute); }
+
+mark.conv-hit { background: #62b4ff2e; color: inherit; border-radius: 3px; padding: 0 1px; }
+
+.conv-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 14px; }
+.conv-ta { resize: vertical; line-height: 1.55; min-height: 0; }
+.btn-ghost.danger { color: var(--red); border-color: #ff6b7833; }
+.btn-ghost.danger:hover:not(:disabled) { color: var(--red); border-color: #ff6b7866; background: #ff6b780d; }
+
+@media (max-width: 880px) {
+  .nav-tabs { position: static; transform: none; order: 3; }
+  .topbar { flex-wrap: wrap; height: auto; padding: 8px 14px; }
+  .conv-table .col-conv-preco { width: auto; }
+}
+
 /* toast */
 .toast {
   position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%);

@@ -4,17 +4,43 @@
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
+/* O navegador lembra a área usada (cadastro/conversores) e o token de acesso
+   ao cadastro. O token vale SÓ pro dia (o servidor também confere): no dia
+   seguinte a senha é pedida de novo. */
+const TOKEN_KEY = "lbwma_acesso";
+const DIA_KEY = "lbwma_acesso_dia";
+const AREA_KEY = "lbwma_area";
+const hoje = () => new Date().toLocaleDateString("sv"); // YYYY-MM-DD local
+function tokenAcesso() {
+  if (localStorage.getItem(DIA_KEY) !== hoje()) {
+    localStorage.removeItem(TOKEN_KEY);
+    return "";
+  }
+  return localStorage.getItem(TOKEN_KEY) || "";
+}
+const hdrsAcesso = () => (tokenAcesso() ? { "X-Acesso": tokenAcesso() } : {});
+
+/* 401 em qualquer chamada da API = token venceu (virou o dia) ou senha trocou:
+   esquece o token e pede a senha de novo. */
+function tratar401(url, status) {
+  if (status === 401 && !url.startsWith("/api/auth")) {
+    localStorage.removeItem(TOKEN_KEY);
+    abrirSenha();
+  }
+}
+
 async function jget(url) {
-  const r = await fetch(url);
-  if (!r.ok) throw new Error("HTTP " + r.status);
+  const r = await fetch(url, { headers: hdrsAcesso() });
+  if (!r.ok) { tratar401(url, r.status); const e = new Error("HTTP " + r.status); e.status = r.status; throw e; }
   return r.json();
 }
 async function jsend(url, method, body) {
-  const r = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const r = await fetch(url, { method, headers: { "Content-Type": "application/json", ...hdrsAcesso() }, body: JSON.stringify(body) });
   if (!r.ok) {
+    tratar401(url, r.status);
     let m = "HTTP " + r.status;
     try { const e = await r.json(); if (e.erro) m = e.erro; } catch (_) {}
-    throw new Error(m);
+    const e = new Error(m); e.status = r.status; throw e;
   }
   return r.json();
 }
@@ -78,6 +104,7 @@ let dirty = false;               // ficha tem edição não salva?
 let padroes = {};                // padrões nível-declaração (pais_origem, fabric_revend)
 
 /* ===================== carregar catálogo ===================== */
+let cadastroCarregado = false;
 async function carregar() {
   setStatus("running", "carregando");
   try {
@@ -85,9 +112,11 @@ async function carregar() {
     padroes = pad || {};
     linhas = data.linhas || [];
     porCodigo = new Map(linhas.map((p) => [p.codigo, p]));
+    cadastroCarregado = true;
     render();
     setStatus(linhas.length ? "ok" : "idle", `cadastro · ${linhas.length}`);
   } catch (err) {
+    if (err.status === 401) { setStatus("idle", "pronto"); return; } // tratar401 já pediu a senha
     setStatus("err", "erro");
     toast("Erro ao carregar o cadastro: " + err.message, "err");
   }
@@ -240,7 +269,7 @@ function construirForm(p) {
 function renderImagem(p) {
   const box = $("#ficha-img-box");
   if (p.tem_imagem) {
-    box.innerHTML = `<img src="/api/produtos/${encodeURIComponent(p.codigo)}/imagem?t=${Date.now()}" alt="imagem">`;
+    box.innerHTML = `<img src="/api/produtos/${encodeURIComponent(p.codigo)}/imagem?t=${Date.now()}&acesso=${encodeURIComponent(tokenAcesso())}" alt="imagem">`;
     $("#img-remove-btn").hidden = false;
   } else {
     box.innerHTML = `<span class="ficha-img-vazia">sem imagem</span>`;
@@ -338,7 +367,7 @@ $("#img-file").addEventListener("change", async () => {
   if (!f || !modalCod) return;
   const fd = new FormData(); fd.append("file", f);
   try {
-    const r = await fetch(`/api/produtos/${encodeURIComponent(modalCod)}/imagem`, { method: "POST", body: fd });
+    const r = await fetch(`/api/produtos/${encodeURIComponent(modalCod)}/imagem`, { method: "POST", body: fd, headers: hdrsAcesso() });
     if (!r.ok) throw new Error("HTTP " + r.status);
     const p = await r.json();
     aplicarProduto(p);
@@ -349,7 +378,7 @@ $("#img-file").addEventListener("change", async () => {
 $("#img-remove-btn").addEventListener("click", async () => {
   if (!modalCod) return;
   try {
-    const r = await fetch(`/api/produtos/${encodeURIComponent(modalCod)}/imagem`, { method: "DELETE" });
+    const r = await fetch(`/api/produtos/${encodeURIComponent(modalCod)}/imagem`, { method: "DELETE", headers: hdrsAcesso() });
     if (!r.ok) throw new Error("HTTP " + r.status);
     aplicarProduto(await r.json());
     toast("Imagem removida", "ok");
@@ -418,7 +447,7 @@ $("#exp-go").addEventListener("click", async () => {
 });
 function baixarPlanilha(id) {
   const a = document.createElement("a");
-  a.href = `/api/planilhas/${id}/download`;
+  a.href = `/api/planilhas/${id}/download?acesso=${encodeURIComponent(tokenAcesso())}`;
   document.body.appendChild(a); a.click(); a.remove();
 }
 
@@ -448,7 +477,7 @@ $("#plan-list").addEventListener("click", async (e) => {
   if (dl) { baixarPlanilha(dl.dataset.dl); return; }
   if (del) {
     if (!confirm("Apagar esta planilha salva?")) return;
-    try { await fetch(`/api/planilhas/${del.dataset.del}`, { method: "DELETE" }); abrirPlanilhas(); toast("Planilha apagada", "ok"); }
+    try { await fetch(`/api/planilhas/${del.dataset.del}`, { method: "DELETE", headers: hdrsAcesso() }); abrirPlanilhas(); toast("Planilha apagada", "ok"); }
     catch (err) { toast("Erro ao apagar: " + err.message, "err"); }
   }
 });
@@ -508,7 +537,7 @@ $("#inv-processar").addEventListener("click", async () => {
   let total = 0;
   const fd = new FormData(); fd.append("file", f);
   try {
-    const resp = await fetch(`/api/processar?ia=${ia}`, { method: "POST", body: fd });
+    const resp = await fetch(`/api/processar?ia=${ia}`, { method: "POST", body: fd, headers: hdrsAcesso() });
     if (!resp.ok || !resp.body) throw new Error("HTTP " + resp.status);
     const reader = resp.body.getReader(), dec = new TextDecoder();
     let buf = "";
@@ -540,6 +569,250 @@ $("#inv-processar").addEventListener("click", async () => {
   }
 });
 
+/* ===================== conversores (área separada) ===================== */
+/* Tabela de preços dos conversores de torque — editável, com busca
+   instantânea. Área separada do cadastro DUIMP. */
+let convLinhas = [];
+let convCarregado = false;
+let convId = null;          // id aberto no modal (null = novo)
+let convRev = -1;           // revisão da tabela no servidor (pro tempo real)
+let vistaAtual = "cadastro";
+
+/* Busca tolerante: minúscula, sem acento (PISTÃO = pistao) e também sem
+   separador (6L-80 = 6l80). convBase preserva o tamanho da string — por isso
+   o realce do trecho encontrado continua alinhado com o texto original. */
+const convBase = (s) => String(s || "").toLowerCase().split("").map((ch) => ch.normalize("NFD")[0]).join("");
+const convCompacta = (s) => convBase(s).replace(/[^a-z0-9]/g, "");
+
+function setView(v, lembrar = true) {
+  if (v === "cadastro" && !tokenAcesso()) { abrirSenha(); return; }
+  vistaAtual = v;
+  if (lembrar) localStorage.setItem(AREA_KEY, v);
+  document.body.classList.toggle("em-conversores", v === "conversores");
+  $("#view-cadastro").hidden = v === "conversores";
+  $("#view-conversores").hidden = v !== "conversores";
+  document.querySelectorAll(".nav-tab").forEach((b) => b.classList.toggle("active", b.dataset.view === v));
+  if (v === "conversores") {
+    if (!convCarregado) convCarregarLista();
+    $("#conv-busca").focus();
+  } else if (!cadastroCarregado) {
+    carregar();
+  }
+}
+document.querySelectorAll(".nav-tab").forEach((b) => b.addEventListener("click", () => setView(b.dataset.view)));
+
+async function convCarregarLista() {
+  try {
+    const data = await jget("/api/conversores");
+    convLinhas = data.linhas || [];
+    convRev = data.rev ?? convRev;
+    convCarregado = true;
+    convRender();
+  } catch (err) { toast("Erro ao carregar conversores: " + err.message, "err"); }
+}
+
+/* Tempo real: consulta a revisão da tabela a cada 2,5s; mudou (outra pessoa
+   salvou), recarrega sozinho — ninguém precisa dar F5. O modal aberto não é
+   tocado: só a lista atrás se atualiza. */
+setInterval(async () => {
+  if (document.hidden || vistaAtual !== "conversores" || !convCarregado) return;
+  try {
+    const { rev } = await jget("/api/conversores/rev");
+    if (rev !== convRev) await convCarregarLista();
+  } catch (_) { /* servidor fora do ar: tenta de novo no próximo tique */ }
+}, 2500);
+
+function convFiltra() {
+  const q = convBase($("#conv-busca").value.trim());
+  if (!q) return convLinhas;
+  const qc = convCompacta(q);
+  return convLinhas.filter((c) => {
+    const alvo = convBase(`${c.modelo} ${c.preco_de} ${c.preco_ate} ${c.venda_impostos} ${c.anotacoes}`);
+    return alvo.includes(q) || (qc && convCompacta(alvo).includes(qc));
+  });
+}
+
+function convMarca(texto, q) {
+  // realça o trecho buscado (comparação sem acento; índice alinha porque convBase preserva o tamanho)
+  const t = esc(texto);
+  if (!q) return t;
+  const i = convBase(texto).indexOf(convBase(q));
+  if (i < 0) return t;
+  return esc(texto.slice(0, i)) + `<mark class="conv-hit">` + esc(texto.slice(i, i + q.length)) + `</mark>` + esc(texto.slice(i + q.length));
+}
+
+function convRender() {
+  const q = $("#conv-busca").value.trim();
+  const vista = convFiltra();
+  const tb = $("#conv-tbody");
+  tb.innerHTML = "";
+  for (const c of vista) {
+    const tr = document.createElement("tr");
+    tr.dataset.id = c.id;
+    tr.innerHTML = `
+      <td class="cell-conv-mod">${convMarca(c.modelo, q)}</td>
+      <td class="cell-conv-preco">${esc(c.preco_de) || "<span class='conv-dim'>—</span>"}</td>
+      <td class="cell-conv-preco">${esc(c.preco_ate) || "<span class='conv-dim'>—</span>"}</td>
+      <td class="cell-conv-venda">${convMarca(c.venda_impostos, q) || "<span class='conv-dim'>consultar</span>"}</td>
+      <td class="cell-conv-anot">${convMarca(c.anotacoes, q)}</td>`;
+    tr.addEventListener("click", () => convAbrir(c.id));
+    tb.appendChild(tr);
+  }
+  const vazio = $("#conv-vazio");
+  if (!vista.length) {
+    vazio.textContent = convLinhas.length
+      ? "Nenhum modelo bate com a busca."
+      : "Tabela vazia. Adicione um modelo.";
+    vazio.hidden = false;
+  } else vazio.hidden = true;
+  $("#conv-count").innerHTML = q
+    ? `<b>${vista.length}</b> de ${convLinhas.length} modelos`
+    : `<b>${convLinhas.length}</b> modelos`;
+}
+$("#conv-busca").addEventListener("input", convRender);
+
+/* ---- modal: novo/editar/apagar ---- */
+function convAbrir(id) {
+  convId = id ?? null;
+  const c = convLinhas.find((x) => x.id === convId) || {};
+  $("#conv-m-titulo").textContent = convId ? c.modelo : "Novo modelo";
+  $("#conv-f-modelo").value = c.modelo || "";
+  $("#conv-f-de").value = c.preco_de || "";
+  $("#conv-f-ate").value = c.preco_ate || "";
+  $("#conv-f-venda").value = c.venda_impostos || "";
+  $("#conv-f-anot").value = c.anotacoes || "";
+  $("#conv-m-apagar").hidden = !convId;
+  $("#conv-m-msg").textContent = "";
+  $("#modal-conv").hidden = false;
+  $("#conv-f-modelo").focus();
+}
+function convFechar() { $("#modal-conv").hidden = true; convId = null; }
+document.querySelectorAll("[data-close-conv]").forEach((el) => el.addEventListener("click", convFechar));
+
+/* Consultar conversores é livre; ALTERAR pede a senha do dia (a mesma do
+   cadastro). Sem token, abre o modal de senha e a ação continua depois. */
+function convExigeSenha(acao) {
+  if (tokenAcesso()) return false;
+  abrirSenha(acao);
+  return true;
+}
+
+async function convSalvar() {
+  const campos = {
+    modelo: $("#conv-f-modelo").value.trim(),
+    preco_de: $("#conv-f-de").value.trim(),
+    preco_ate: $("#conv-f-ate").value.trim(),
+    venda_impostos: $("#conv-f-venda").value.trim(),
+    anotacoes: $("#conv-f-anot").value.trim(),
+  };
+  if (!campos.modelo) { $("#conv-m-msg").textContent = "informe o modelo"; $("#conv-f-modelo").focus(); return; }
+  if (convExigeSenha(convSalvar)) return;
+  const btn = $("#conv-m-salvar"), rotulo = btn.textContent;
+  btn.disabled = true; btn.textContent = "salvando…"; $("#conv-m-msg").textContent = "";
+  try {
+    const c = convId
+      ? await jsend(`/api/conversores/${convId}`, "PUT", { campos })
+      : await jsend("/api/conversores", "POST", { campos });
+    const i = convLinhas.findIndex((x) => x.id === c.id);
+    if (i >= 0) convLinhas[i] = c; else convLinhas.push(c);
+    convLinhas.sort((a, b) => a.modelo.localeCompare(b.modelo, "pt-BR", { sensitivity: "base" }));
+    convRender();
+    convFechar();
+    toast(`${c.modelo} salvo`, "ok");
+  } catch (err) {
+    // 401 = token venceu/senha trocou: pede a senha e o salvar continua depois
+    if (err.status === 401) abrirSenha(convSalvar);
+    else $("#conv-m-msg").textContent = err.message;
+  }
+  finally { btn.disabled = false; btn.textContent = rotulo; }
+}
+$("#conv-m-salvar").addEventListener("click", convSalvar);
+$("#conv-add").addEventListener("click", () => convAbrir(null));
+
+async function convApagar() {
+  if (!convId) return;
+  if (convExigeSenha(convApagar)) return;
+  const c = convLinhas.find((x) => x.id === convId);
+  if (!confirm(`Apagar "${c ? c.modelo : "este modelo"}" da tabela de conversores?`)) return;
+  try {
+    const r = await fetch(`/api/conversores/${convId}`, { method: "DELETE", headers: hdrsAcesso() });
+    if (r.status === 401) { localStorage.removeItem(TOKEN_KEY); abrirSenha(convApagar); return; }
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    convLinhas = convLinhas.filter((x) => x.id !== convId);
+    convRender();
+    convFechar();
+    toast("Modelo apagado", "ok");
+  } catch (err) { toast("Erro ao apagar: " + err.message, "err"); }
+}
+$("#conv-m-apagar").addEventListener("click", convApagar);
+
+document.addEventListener("keydown", (e) => {
+  if ($("#modal-conv").hidden) return;
+  if (e.key === "Escape") { e.preventDefault(); convFechar(); }
+  else if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); convSalvar(); }
+});
+
+/* ===================== senha (cadastro / alterar conversores) ===================== */
+/* O mesmo modal serve aos dois fluxos. Sem ação pendente é o fluxo do cadastro
+   (senha certa -> entra no cadastro). Com ação pendente (alterar conversores),
+   a senha certa libera o token do dia e a ação continua de onde parou. */
+let senhaAoLiberar = null;
+
+function abrirSenha(aoLiberar = null) {
+  senhaAoLiberar = aoLiberar || null;
+  $("#senha-titulo").textContent = senhaAoLiberar ? "Alterar conversores" : "Acesso ao cadastro";
+  $("#senha-hint").textContent = senhaAoLiberar
+    ? "Consultar a tabela é livre, mas alterar pede a senha. Ela vale até o fim do dia — amanhã é pedida de novo."
+    : "O cadastro (DUIMP, planilhas, padrões) é restrito. A senha vale até o fim do dia — amanhã ela é pedida de novo.";
+  $("#senha-cancelar").textContent = senhaAoLiberar ? "Cancelar" : "Voltar aos conversores";
+  $("#senha-msg").textContent = "";
+  $("#senha-input").value = "";
+  $("#modal-senha").hidden = false;
+  $("#senha-input").focus();
+}
+function fecharSenha() { $("#modal-senha").hidden = true; }
+
+async function senhaEntrar() {
+  const senha = $("#senha-input").value;
+  if (!senha) { $("#senha-input").focus(); return; }
+  const btn = $("#senha-entrar"), rotulo = btn.textContent;
+  btn.disabled = true; btn.textContent = "verificando…"; $("#senha-msg").textContent = "";
+  try {
+    const { token } = await jsend("/api/auth", "POST", { senha });
+    localStorage.setItem(TOKEN_KEY, token);
+    localStorage.setItem(DIA_KEY, hoje());
+    fecharSenha();
+    toast("Acesso liberado até o fim do dia", "ok");
+    const continuar = senhaAoLiberar;
+    senhaAoLiberar = null;
+    if (continuar) continuar(); else setView("cadastro");
+  } catch (err) {
+    $("#senha-msg").textContent = err.status === 401 ? "senha incorreta" : err.message;
+    $("#senha-input").select();
+  } finally { btn.disabled = false; btn.textContent = rotulo; }
+}
+$("#senha-entrar").addEventListener("click", senhaEntrar);
+$("#senha-cancelar").addEventListener("click", () => {
+  fecharSenha();
+  if (senhaAoLiberar) { senhaAoLiberar = null; return; } // desistiu de alterar: fica onde está
+  setView("conversores");
+});
+$("#senha-input").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { e.preventDefault(); senhaEntrar(); }
+  else if (e.key === "Escape") { e.preventDefault(); $("#senha-cancelar").click(); }
+});
+
 /* ===================== início ===================== */
+/* Restaura a última área usada neste navegador. Sem token de acesso, o
+   cadastro pede a senha; os conversores são abertos pra equipe toda. */
 atualizarExportBtn();
-carregar();
+{
+  const salva = localStorage.getItem(AREA_KEY);
+  const area = salva || "conversores";
+  if (area === "cadastro" && !tokenAcesso()) {
+    setView("conversores", false);
+    abrirSenha();
+  } else {
+    setView(area, false);
+  }
+}

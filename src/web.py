@@ -18,6 +18,17 @@ Rotas:
   GET    /api/planilhas/{id}/download -> baixa (xlsx na DUIMP; zip na completa)
   DELETE /api/planilhas/{id}        -> apaga planilha salva
 
+Área separada — preços dos conversores de torque (src/conversores.py):
+  GET    /api/conversores           -> lista (busca em todos os campos) + rev
+  GET    /api/conversores/rev       -> revisão atual (a UI consulta e recarrega sozinha)
+  POST   /api/conversores           -> cadastra um modelo
+  PUT    /api/conversores/{id}      -> edita (modelo, preços, impostos, anotações)
+  DELETE /api/conversores/{id}      -> remove
+
+Acesso (src/acesso.py): CONSULTAR conversores (GET) é aberto pra equipe toda;
+ALTERAR conversores (POST/PUT/DELETE) e o resto da API pedem o token do
+cadastro (header X-Acesso ou ?acesso=). POST /api/auth troca a senha pelo token.
+
 Rodar:  python run.py   (ou: python -m uvicorn src.web:app --reload)
 """
 from __future__ import annotations
@@ -32,7 +43,7 @@ from fastapi import FastAPI, File, Query, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from src import configuracoes, imagens, importacao, produto as produto_mod, saida
+from src import acesso, configuracoes, conversores, imagens, importacao, produto as produto_mod, saida
 from src.config import settings
 from src.descricao import carregar_templates
 from src.dominio import ItemInvoice
@@ -48,6 +59,40 @@ app.mount("/static", StaticFiles(directory=FRONT_DIR), name="static")
 @app.get("/", response_class=HTMLResponse)
 def index() -> str:
     return (FRONT_DIR / "index.html").read_text(encoding="utf-8")
+
+
+# --- acesso ao cadastro -------------------------------------------------------
+# Aberto pra todo mundo: a página, os estáticos, o login e a CONSULTA dos
+# conversores (GET). Alterar conversores (POST/PUT/DELETE) e o resto da
+# API (cadastro, planilhas, padrões, invoice) exigem o token.
+_ROTAS_ABERTAS = ("/static", "/api/auth")
+
+
+@app.middleware("http")
+async def exige_acesso(request: Request, call_next):
+    p = request.url.path
+    aberta = (
+        p == "/"
+        or any(p.startswith(r) for r in _ROTAS_ABERTAS)
+        or (p.startswith("/api/conversores") and request.method == "GET")
+    )
+    if not aberta and p.startswith("/api"):
+        token = request.headers.get("x-acesso") or request.query_params.get("acesso") or ""
+        if not acesso.token_valido(token):
+            return JSONResponse({"erro": "acesso restrito ao cadastro"}, status_code=401)
+    return await call_next(request)
+
+
+@app.post("/api/auth")
+async def api_auth(request: Request):
+    try:
+        body = await request.json()
+    except Exception:  # noqa: BLE001 — rota pública: body malformado não vira 500
+        return JSONResponse({"erro": "envie {\"senha\": ...}"}, status_code=400)
+    token = acesso.verificar(str(body.get("senha") or ""))
+    if token is None:
+        return JSONResponse({"erro": "senha incorreta"}, status_code=401)
+    return {"token": token}
 
 
 # --- padrões nível-declaração (país de origem, fabric/revend) ---------------
@@ -165,6 +210,47 @@ async def api_importar(file: UploadFile = File(...)):
     if resumo.get("erro"):
         return JSONResponse(resumo, status_code=400)
     return resumo
+
+
+# --- conversores de torque (área separada) ----------------------------------
+@app.get("/api/conversores")
+def api_conversores(busca: str = Query("")):
+    itens = [conversores.to_dict(c) for c in conversores.listar(busca=busca)]
+    return {"linhas": itens, "total": conversores.total(), "rev": conversores.rev()}
+
+
+@app.get("/api/conversores/rev")
+def api_conversores_rev():
+    return {"rev": conversores.rev()}
+
+
+@app.post("/api/conversores")
+async def api_conversor_criar(request: Request):
+    body = await request.json()
+    try:
+        c = conversores.criar(body.get("campos", body))
+    except ValueError as e:
+        return JSONResponse({"erro": str(e)}, status_code=400)
+    return conversores.to_dict(c)
+
+
+@app.put("/api/conversores/{cid}")
+async def api_conversor_salvar(cid: int, request: Request):
+    body = await request.json()
+    try:
+        c = conversores.atualizar(cid, body.get("campos", body))
+    except ValueError as e:
+        return JSONResponse({"erro": str(e)}, status_code=400)
+    if c is None:
+        return JSONResponse({"erro": "modelo não encontrado"}, status_code=404)
+    return conversores.to_dict(c)
+
+
+@app.delete("/api/conversores/{cid}")
+def api_conversor_remover(cid: int):
+    if not conversores.remover(cid):
+        return JSONResponse({"erro": "modelo não encontrado"}, status_code=404)
+    return {"ok": True}
 
 
 # --- exportação + planilhas salvas -----------------------------------------

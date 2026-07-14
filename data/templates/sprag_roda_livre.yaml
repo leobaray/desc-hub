@@ -1,6 +1,6 @@
 # Família: rolamento radial unidirecional — sprag / roda livre (contabilidade:
 # "Rolamento radial unidirecional", 36 itens, prefixo PS*). Veio do brainstorm
-# original com o Claude. NCM: a dúvida 8483 (embreagens) vs 8482 (rolamentos)
+# original. NCM: a dúvida 8483 (embreagens) vs 8482 (rolamentos)
 # foi resolvida pela contabilidade em 84828000.
 tipo: sprag_roda_livre
 nome: Rolamento radial unidirecional (sprag / roda livre)

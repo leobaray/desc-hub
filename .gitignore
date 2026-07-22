@@ -1,0 +1,56 @@
+# --- Python ---------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# --- Virtual environments -------------------------------------------------
+.venv/
+venv/
+env/
+ENV/
+
+# --- Environment / secrets ------------------------------------------------
+.env
+.env.*
+!.env.example
+
+# --- Tooling caches -------------------------------------------------------
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.tox/
+
+# --- SQLite database (created at runtime) ---------------------------------
+*.db
+*.db-wal
+*.db-shm
+*.sqlite3
+
+# --- Runtime data & generated artifacts -----------------------------------
+# data/templates/ is tracked on purpose; everything else under data/ is local.
+/data/app.db
+/data/cache/
+/data/catalogo/
+/data/imagens/
+/data/planilhas/
+/data/saida/
+
+# --- Proprietary source catalogues (not distributed) ----------------------
+/catalogos/
+
+# --- Exported spreadsheets / archives -------------------------------------
+*.xlsx
+*.zip
+
+# --- OS / editor ----------------------------------------------------------
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
